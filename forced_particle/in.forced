@@ -1,0 +1,94 @@
+# Setting for a periodic box with a rectangular obstacle
+
+# Setting a 3D periodic system with lj units
+units		lj
+dimension	3
+atom_style	atomic
+boundary p p p
+
+# Create the lattice on which initial atoms will be placed
+region box_region block 0 5 0 5 0 10
+
+# Create box for 1 species from above region
+create_box 2 box_region
+
+region top block EDGE EDGE EDGE EDGE 4 EDGE
+region bot block EDGE EDGE EDGE EDGE EDGE 7
+region topbot union 2 top bot
+
+# defining the obstacles
+
+variable sig equal 1.
+# rcut/sigma for lj93 is 0.4**(1./6.) = 0.858374218932557
+
+create_atoms 1 random 5 ${aseed} topbot
+
+region center block EDGE EDGE EDGE EDGE 5 6.1
+lattice sc 1 origin 0.5 0.5 0.
+create_atoms 2 region center
+
+region void sphere 2.5 2.5 6.3 1.5
+delete_atoms region void
+
+group obstacle type 2
+group colloids type 1
+
+mass		* 1.0
+
+velocity obstacle set 0 0 0
+velocity colloids create 0.85 7589
+
+variable d equal 1.*${sig}
+variable rc equal ${sig}*1.122462048309373
+variable dc equal 2*${rc}
+
+pair_style	lj/cut ${dc}
+pair_coeff * * 1.0 ${d} ${dc}
+pair_modify	shift yes
+
+neighbor	0.3 bin
+neigh_modify delay 1 every 1 check yes
+
+timestep 0.0001
+fix 1 colloids nve/limit 0.01
+fix 2 colloids temp/rescale 1 1.0 1.0 1. 0.5
+min_style fire
+
+fix freeze obstacle setforce 0.0 0.0 0.0
+
+# variable iii loop 10
+# label start_of_loop_1
+# variable ts equal $(v_iii*0.0001)
+# print ${ts}
+# timestep ${ts}
+# #run 2000
+# minimize 0.5 0.1 2000 2000
+
+# next iii
+# jump SELF start_of_loop_1
+unfix 1
+unfix 2
+
+fix 1 colloids nve/limit 0.01
+fix 2 colloids temp/rescale 1 1.0 1.0 1. 0.5
+run 20000
+unfix 2
+unfix 1
+
+timestep 0.01
+fix 1 colloids nve
+fix dyn colloids langevin 1.0 1.0 5.0 64839
+
+group first id 1
+fix f_force first addforce 0. 0. ${fz}
+
+thermo 1000
+
+run 10000
+
+dump hd colloids h5md 20 dump_prism.h5 position image velocity
+write_dump obstacle h5md dump_prism.h5 file_from hd position create_group yes
+#dump d0 all image 20 img/dump.*.ppm type type
+
+run 400000
+
