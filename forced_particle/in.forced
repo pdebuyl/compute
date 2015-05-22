@@ -7,7 +7,7 @@ atom_style	atomic
 boundary p p p
 
 # Create the lattice on which initial atoms will be placed
-region box_region block 0 5 0 5 0 10
+region box_region block 0 5.2 0 5.47 0 10.4
 
 # Create box for 1 species from above region
 create_box 2 box_region
