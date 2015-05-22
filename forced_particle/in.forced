@@ -21,7 +21,7 @@ region topbot union 2 top bot
 variable sig equal 1.
 # rcut/sigma for lj93 is 0.4**(1./6.) = 0.858374218932557
 
-create_atoms 1 random 5 ${aseed} topbot
+create_atoms 1 random ${ncolloids} ${aseed} topbot
 
 region center block EDGE EDGE EDGE EDGE 5 6.5
 lattice hcp 1.2 origin 0.5 0.5 0.
