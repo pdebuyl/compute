@@ -51,7 +51,7 @@ pair_modify	shift yes
 neighbor	0.3 bin
 neigh_modify delay 1 every 1 check yes
 
-timestep 0.0001
+timestep 0.00025
 fix 1 colloids nve/limit 0.01
 fix 2 colloids temp/rescale 1 1.0 1.0 1. 0.5
 min_style fire
@@ -77,20 +77,19 @@ run 20000
 unfix 2
 unfix 1
 
-timestep 0.01
+timestep 0.001
 fix 1 colloids nve
 fix dyn colloids langevin 1.0 1.0 5.0 64839
 
 group first id 1
 fix f_force first addforce 0. 0. ${fz}
 
-thermo 1000
+thermo 10000
 
-run 10000
+run 100000
 
-dump hd colloids h5md 20 dump_prism.h5 position image velocity
+dump hd colloids h5md 200 dump_prism.h5 position image velocity
 write_dump obstacle h5md dump_prism.h5 file_from hd position create_group yes
-#dump d0 all image 20 img/dump.*.ppm type type
 
-run 40000
+run 400000
 
