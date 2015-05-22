@@ -12,8 +12,8 @@ region box_region block 0 5 0 5 0 10
 # Create box for 1 species from above region
 create_box 2 box_region
 
-region top block EDGE EDGE EDGE EDGE 4 EDGE
-region bot block EDGE EDGE EDGE EDGE EDGE 7
+region top block EDGE EDGE EDGE EDGE 7 EDGE
+region bot block EDGE EDGE EDGE EDGE EDGE 4
 region topbot union 2 top bot
 
 # defining the obstacles
@@ -23,11 +23,13 @@ variable sig equal 1.
 
 create_atoms 1 random 5 ${aseed} topbot
 
-region center block EDGE EDGE EDGE EDGE 5 6.1
-lattice sc 1 origin 0.5 0.5 0.
+region center block EDGE EDGE EDGE EDGE 5 6.5
+lattice hcp 1.2 origin 0.5 0.5 0.
 create_atoms 2 region center
 
-region void sphere 2.5 2.5 6.3 1.5
+group obstacle type 2
+
+region void sphere 2.5 2.5 6.1 1. units box
 delete_atoms region void
 
 group obstacle type 2
@@ -90,5 +92,5 @@ dump hd colloids h5md 20 dump_prism.h5 position image velocity
 write_dump obstacle h5md dump_prism.h5 file_from hd position create_group yes
 #dump d0 all image 20 img/dump.*.ppm type type
 
-run 400000
+run 40000
 
