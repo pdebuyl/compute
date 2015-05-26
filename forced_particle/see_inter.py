@@ -20,7 +20,7 @@ colloids = datafile['/particles/colloids/position/value']
 box = datafile['/particles/obstacle/box/edges'][:]
 
 class MyModel(HasTraits):
-    idx    = Range(0, colloids.shape[0]-1, 0,mode='slider')
+    idx    = Range(0, colloids.shape[0]-1, 0,mode='spinner')
 
     scene = Instance(MlabSceneModel, ())
 
