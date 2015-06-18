@@ -24,7 +24,19 @@ program test_int
   print *, p_to_h([7, 3, 5], 3)
   print *, h_to_p(407, 3)
 
-  do i=1, 2**dim-1
+  open(12, file='i_p.txt')
+  do i=0, 2**(dim*3)-1
+     write(12, *) i, h_to_p(i, 3)
+  end do
+  close(12)
+
+  do i=0, 2**(dim*3)-1
+     if ( p_to_h(h_to_p(i, 3), 3) .ne. i ) then
+        stop 'p_to_h and h_to_p do not agree'
+     end if
+  end do
+  
+  do i=0, 2**dim-1
      print *, i, (ibits(i, j, 1), j=0, dim-1)
   end do
 
