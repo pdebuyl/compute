@@ -6,11 +6,15 @@ program test_int
 
   integer :: i, j, k
 
-  print *, dim, mask
+  write(*,*) bin_str(dim), ' ', bin_str(mask)
+
+  do i=1, 2**dim-1
+     write(*,*) i, ' ', bin_str(i)
+  end do
 
   do i=1, dim
-     print *, i, 'right', rotate_right(1, i)
-     print *, i, 'left', rotate_left(1, i)
+     write(*, '(a7 a7 i3 a3 i5 a7)') bin_str(1), ' right', i, ' = ', rotate_right(1, i), bin_str(rotate_right(1, i))
+     write(*, '(a7 a7 i3 a3 i5 a7)') bin_str(1), ' left', i, '= ', rotate_left(1, i), bin_str(rotate_left(1, i))
   end do
   
 contains
@@ -38,5 +42,24 @@ contains
     rotate_left = iand(ior(rotate_left, tmp), mask)
 
   end function rotate_left
+
+  function bin_str(x)
+    integer, intent(in) :: x
+
+    character(len=dim) :: bin_str
+    integer :: i, j, total_size
+
+    total_size = bit_size(x)
+
+    do i=1, dim
+       j = dim-(i-1)
+       if (ibits(x, i-1, 1).eq.1) then
+          bin_str(j:j) = '1'
+       else
+          bin_str(j:j) = '0'
+       end if
+    end do
+
+  end function bin_str
 
 end program test_int
