@@ -4,7 +4,8 @@ program test_int
   integer, parameter :: dim=3
   integer, parameter :: mask=2**dim-1
 
-  integer :: i, j, k, b
+  integer :: i, j
+  integer :: compact_m(dim)
 
   write(*,*) bin_str(dim), ' ', bin_str(mask)
 
@@ -30,6 +31,15 @@ program test_int
   end do
   close(12)
 
+  write(*,*) 'compact'
+  open(12, file='compact_i_p.txt')
+  compact_m = [3, 2, 2]
+  do i=0, 2**sum(compact_m)-1
+     write(12, *) i, compact_h_to_p(i, compact_m)
+  end do
+  close(12)
+  write(*,*) 'compact'
+
   do i=0, 2**(dim*3)-1
      if ( p_to_h(h_to_p(i, 3), 3) .ne. i ) then
         stop 'p_to_h and h_to_p do not agree'
@@ -38,6 +48,10 @@ program test_int
   
   do i=0, 2**dim-1
      print *, i, (ibits(i, j, 1), j=0, dim-1)
+  end do
+
+  do i=0,dim-1
+     write(*,*) extract_mask(i, compact_m)
   end do
 
 contains
@@ -209,5 +223,126 @@ contains
     end do
 
   end function h_to_p
+
+  function gcr(i, mu) result(r)
+    integer, intent(in) :: i, mu
+    integer :: r
+
+    integer :: k
+    r = 0
+    do k=dim-1, 0, -1
+       if (ibits(mu, k, 1) .eq. 1) then
+          r = ior( shiftl(r, 1), ibits(i, k, 1))
+       end if
+    end do
+
+  end function gcr
+
+  function inverse_gcr(r, mu, pi) result(i)
+    integer, intent(in) :: r, mu, pi
+    integer :: i
+
+    integer :: g, j, k
+    i = 0
+    g = 0
+    j = -1
+    do k=0, dim - 1
+       j = j + ibits(mu, k, 1)
+    end do
+    do k=dim-1, 0, -1
+       if (ibits(mu, k, 1) .eq. 1) then
+          i = ior(i, shiftl( ibits(r, j, 1), k))
+          g = ior(g, shiftl( modulo( ibits(i, k, 1)+ibits(i, k+1, 1), 2), k) )
+          j = j-1
+       else
+          g = ior(g, shiftl( ibits(pi, k, 1), k))
+          i = ior(i, shiftl( modulo( ibits(g, k, 1)+ibits(i, k+1, 1), 2), k) )
+       end if
+    end do
+  end function inverse_gcr
+
+  function extract_mask(i, m) result(mu)
+    integer, intent(in) :: i, m(dim)
+    integer :: mu
+
+    integer :: j
+
+    mu = 0
+    do j=dim, 1, -1
+       mu = shiftl(mu, 1)
+       if ( m(j) .gt. i ) then
+          mu = ior(mu, 1)
+       end if
+    end do
+
+  end function extract_mask
+
+  function compact_p_to_h(p, m) result(h)
+    integer, intent(in) :: p(dim), m(dim)
+    integer :: h
+
+    integer :: e, d, max_m, i, j, l, mu, mu_norm, pi, r, w
+
+    h = 0
+    e = 0
+    d = 2
+    max_m = maxval(m)
+    do i=max_m-1, 0, -1
+       mu = extract_mask(i, m)
+       mu_norm = 0
+       do j=0, dim-1
+          mu_norm = mu_norm + ibits(mu, j, 1)
+       end do
+       mu = rotate_right(mu, d+1)
+       pi = iand(rotate_right(e, d+1), iand(not(mu), mask))
+       l = 0
+       do j=1, dim
+          l = l + 2**(j-1)*ibits(p(j), i, 1)
+       end do
+       l = transform(e, d, l)
+       w = inverse_gc(l)
+       r = gcr(w, mu)
+       e = ieor(e, rotate_left(entry_point(w), d+1))
+       d = modulo(d + intracube_d(w) + 1, dim)
+       h = ior( shiftl(h, mu_norm), r)
+    end do
+
+  end function compact_p_to_h
+
+  function compact_h_to_p(h, m) result(p)
+    integer, intent(in) :: h, m(dim)
+    integer :: p(dim)
+
+    integer :: e, d, i, j, k, max_m, sum_m, mu_norm, mu, pi, r, l, w
+
+    e = 0
+    d = 2
+    k = 0
+    p = 0
+    max_m = maxval(m)
+    sum_m = sum(m)
+    do i=max_m-1, 0, -1
+       mu = extract_mask(i, m)
+       mu_norm = 0
+       do j=0, dim-1
+          mu_norm = mu_norm + ibits(mu, j, 1)
+       end do
+       mu = rotate_right(mu, d+1)
+       pi = iand(rotate_right(e, d+1), iand(not(mu), mask))
+       r = 0
+       do j=0, mu_norm-1
+          r = r + 2**j*ibits(h, sum_m - k - mu_norm + j, 1)
+       end do
+       k = k + mu_norm
+       w = inverse_gcr(r, mu, pi)
+       l = gc(w)
+       l = inverse_transform(e, d, l)
+       do j=1, dim
+          p(j) = p(j) + shiftl(ibits(l, j-1, 1), i)
+       end do
+       e = ieor(e, rotate_left(entry_point(w), d+1))
+       d = modulo(d + intracube_d(w) + 1, dim)
+    end do
+  end function compact_h_to_p
 
 end program test_int
