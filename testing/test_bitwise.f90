@@ -17,6 +17,13 @@ program test_int
      write(*, '(a7 a7 i3 a3 i5 a7)') bin_str(1), ' left', i, '= ', rotate_left(1, i), bin_str(rotate_left(1, i))
   end do
   
+  do i=0, 2**dim-1
+     print *, i, (i-1)/2, floor((i-1)/2.d0), 2*((i-1)/2), 2*floor((i-1)/2.d0)
+  end do
+  do i=0, 2**dim-1
+     print *, i, gc(i), entry_point(i), exit_point(i)
+  end do
+
 contains
 
   pure function rotate_right(x, d)
@@ -61,5 +68,33 @@ contains
     end do
 
   end function bin_str
+
+  function gc(i)
+    integer, intent(in) :: i
+    integer gc
+
+    gc = ieor(i, shiftr(i, 1))
+
+  end function gc
+
+  function entry_point(i)
+    integer, intent(in) :: i
+    integer :: entry_point
+
+    if (i .eq. 0) then
+       entry_point = 0
+    else
+       entry_point = gc(2*((i-1)/2))
+    end if
+
+  end function entry_point
+
+  function exit_point(i)
+    integer, intent(in) :: i
+    integer :: exit_point
+
+    exit_point = ieor(entry_point(mask-i), 2**(dim-1))
+
+  end function exit_point
 
 end program test_int
