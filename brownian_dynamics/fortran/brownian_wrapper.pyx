@@ -21,4 +21,4 @@ def srk_with_tracer(double[:, ::1] x0, double[::1] tracer_x0, double D,
     c_srk_with_tracer(&x0[0,0], &tracer_x0[0], &D, &tracer_D, &dt, &nsteps, &hat_a,
                       &hat_g, &k, &data[0,0,0], &tracer_data[0,0], &dim, &n_bath)
 
-    return data, tracer_data
+    return np.asarray(data), np.asarray(tracer_data)
