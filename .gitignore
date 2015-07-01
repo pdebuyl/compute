@@ -4,4 +4,4 @@
 *.pyc
 *.so
 *.mod
-
+.ipynb_checkpoints
