@@ -1,3 +1,12 @@
+! Module to perform brownian dynamics simulations of n_bath particles that feel
+! an external potential.  A single probe is coupled via harmonic bonds to all of
+! the bath particles.  The algorithm is the "Stochastic Runge Kutta" (or SRK)
+! from Branka & Heyes, "Algorithms for Brownian dynamics simulation". Physical
+! Review E 58, p 2611 (1998). http://dx.doi.org/10.1103/PhysRevE.58.2611
+
+! Author: Pierre de Buyl
+! License: BSD 3-clause
+
 module brownian
   use stdtypes
   use mtprng
