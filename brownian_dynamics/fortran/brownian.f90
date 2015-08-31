@@ -17,6 +17,15 @@ module brownian
 
 contains
 
+  pure function hat(x, x_sq, hat_a, hat_g) result(f)
+    double precision, intent(in) :: x(:,:), x_sq(:,:)
+    double precision, intent(in) :: hat_a, hat_g
+    double precision, dimension(dim, size(x, dim=2)) :: f
+
+    f = hat_a*x - hat_g*x_sq*x
+
+  end function hat
+
   pure function harmonic_cut(x1, x2, cut, cut_sq) result(r)
     double precision, dimension(dim), intent(in) :: x1, x2
     double precision, intent(in) :: cut, cut_sq
@@ -86,7 +95,7 @@ contains
     do i = 1, nsteps
        do i_loop = 1, nloop
           rsq = spread(sum(x**2 , dim=1), dim=1, ncopies=dim)
-          f1 = hat_a*x - hat_g*rsq*x
+          f1 = hat(x, rsq, hat_a, hat_g)
           tracer_f1 = 0
           do j = 1, n_bath
              tmp = k * harmonic_cut(x(:,j), tracer_x, sigma, sigma_sq)
@@ -103,7 +112,7 @@ contains
           x1 = x + D*f1*dt + g0
           tracer_x1 = tracer_x + D*tracer_f1*dt + tracer_g0
           rsq = spread(sum(x1**2 , dim=1), dim=1, ncopies=dim)
-          f2 = hat_a*x1 - hat_g*rsq*x1
+          f2 = hat(x1, rsq, hat_a, hat_g)
           tracer_f2 = 0
           do j = 1, n_bath
              tmp = k * harmonic_cut(x1(:,j), tracer_x1, sigma, sigma_sq)
