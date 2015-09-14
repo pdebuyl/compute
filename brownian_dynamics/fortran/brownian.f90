@@ -52,13 +52,13 @@ contains
 
   end function rotate
 
-  subroutine srk_with_tracer(x0, tracer_x0, D, tracer_D, dt, nloop, nsteps, &
+  subroutine srk_with_tracer(x0, tracer_x0, D, tracer_D, dt, nloop, nsteps, nskip, &
        hat_a, hat_g, k, sigma, rot_eps, data, tracer_data, force, force_count)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: tracer_x0(:)
     double precision, intent(in) :: D, tracer_D, dt, hat_a, hat_g, k
     double precision, intent(in) :: sigma, rot_eps
-    integer, intent(in) :: nloop, nsteps
+    integer, intent(in) :: nloop, nsteps, nskip
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
          tracer_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
@@ -92,7 +92,7 @@ contains
     force = 0
     force_count = 0
 
-    do i = 1, nsteps
+    do i = 1, nsteps + nskip
        do i_loop = 1, nloop
           rsq = spread(sum(x**2 , dim=1), dim=1, ncopies=dim)
           f1 = hat(x, rsq, hat_a, hat_g)
@@ -125,15 +125,18 @@ contains
 
        end do
 
-       data(:, :, i) = x
-       tracer_data(:, i) = tracer_x
+       if (i > nskip) then
+          data(:, :, i - nskip) = x
+          tracer_data(:, i - nskip) = tracer_x
 
-       radius = sqrt(sum(tracer_x**2))
-       if ( radius < 1.d0 ) then
-          idx = floor(radius*nbins) + 1
-          force_count(idx) = force_count(idx) + 1
-          tmp = k * harmonic_cut(tracer_x, x(:,1), sigma, sigma_sq)
-          force(idx) = force(idx) + sum(tracer_x * tmp) / radius
+          radius = sqrt(sum(tracer_x**2))
+          if ( radius < 1.d0 ) then
+             idx = floor(radius*nbins) + 1
+             force_count(idx) = force_count(idx) + 1
+             tmp = k * harmonic_cut(tracer_x, x(:,1), sigma, sigma_sq)
+             force(idx) = force(idx) + sum(tracer_x * tmp) / radius
+          end if
+
        end if
 
     end do
