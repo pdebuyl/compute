@@ -51,10 +51,10 @@ unfix 1
 
 timestep 0.001
 fix 1 colloids nve
-fix dyn colloids langevin 1.0 1.0 5.0 64839
+fix dyn colloids langevin 1.0 1.0 10.0 64839
 
-group first id 14
-fix f_force first addforce 0. ${fz} 0.
+group first id 19
+fix f_force colloids addforce 0. ${fz} 0.
 
 thermo 10000
 
@@ -63,5 +63,5 @@ run 1000
 dump hd colloids h5md 200 dump_prism.h5 position image velocity
 write_dump obstacle h5md dump_prism.h5 file_from hd position create_group yes
 
-run 4000000
+run 1000000
 
