@@ -15,6 +15,14 @@ module brownian
   integer, parameter :: dim = 2
   integer, parameter :: nbins = 24
 
+  interface
+     pure function pair_force_t(x1, x2, sigma, cut, cut_sq) result(r)
+       double precision, intent(in) :: x1(2), x2(2)
+       double precision, intent(in) :: sigma, cut, cut_sq
+       double precision, dimension(2) :: r
+     end function pair_force_t
+  end interface
+
 contains
 
   pure function hat(x, x_sq, hat_a, hat_g) result(f)
@@ -26,9 +34,9 @@ contains
 
   end function hat
 
-  pure function harmonic_cut(x1, x2, cut, cut_sq) result(r)
+  pure function harmonic_cut(x1, x2, sigma, cut, cut_sq) result(r)
     double precision, dimension(dim), intent(in) :: x1, x2
-    double precision, intent(in) :: cut, cut_sq
+    double precision, intent(in) :: sigma, cut, cut_sq
     double precision, dimension(dim) :: r
 
     double precision :: dist_sq
@@ -43,6 +51,25 @@ contains
 
   end function harmonic_cut
 
+  pure function lj_cut(x1, x2, sigma, cut, cut_sq) result(r)
+    double precision, dimension(dim), intent(in) :: x1, x2
+    double precision, intent(in) :: sigma, cut, cut_sq
+    double precision, dimension(dim) :: r
+
+    double precision :: dist_sq, dist, sig6_o_r6
+
+    dist_sq = sum((x1-x2)**2)
+
+    if ( dist_sq <= cut_sq ) then
+       dist = sqrt(dist_sq)
+       sig6_o_r6 = sigma**6 / dist_sq**3
+       r = 24 * sig6_o_r6 / dist_sq * ( 2*sig6_o_r6 - 1 ) * (x1 - x2)
+    else
+       r = 0
+    end if
+
+  end function lj_cut
+
   pure function rotate(x) result(f)
     double precision, dimension(dim), intent(in) :: x
     double precision, dimension(dim) :: f
@@ -53,21 +80,22 @@ contains
   end function rotate
 
   subroutine srk_with_tracer(x0, tracer_x0, D, tracer_D, dt, nloop, nsteps, nskip, &
-       hat_a, hat_g, k, sigma, rot_eps, data, tracer_data, force, force_count)
+       hat_a, hat_g, k, sigma, cut, rot_eps, data, tracer_data, force, force_count, pair_force)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: tracer_x0(:)
     double precision, intent(in) :: D, tracer_D, dt, hat_a, hat_g, k
-    double precision, intent(in) :: sigma, rot_eps
+    double precision, intent(in) :: sigma, cut, rot_eps
     integer, intent(in) :: nloop, nsteps, nskip
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
          tracer_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
     integer, intent(out) :: force_count(nbins)
+    procedure(pair_force_t) :: pair_force
 
     double precision, dimension(:,:), allocatable :: x, x1, f1, f2, g0, rsq
     double precision, dimension(dim) :: tracer_x, tracer_x1, tracer_f1, tracer_f2, tracer_g0
     double precision, dimension(dim) :: tmp
-    double precision :: sigma_sq, radius
+    double precision :: cut_sq, radius
     integer :: idx
 
     integer :: i, n_bath, j, i_loop
@@ -75,7 +103,7 @@ contains
     type(mtprng_state) :: state
 
     n_bath = size(x0, dim=2)
-    sigma_sq = sigma**2
+    cut_sq = cut**2
 
     seed = nint(100*secnds(0.))
     call mtprng_init(seed, state)
@@ -98,7 +126,7 @@ contains
           f1 = hat(x, rsq, hat_a, hat_g)
           tracer_f1 = 0
           do j = 1, n_bath
-             tmp = k * harmonic_cut(x(:,j), tracer_x, sigma, sigma_sq)
+             tmp = k * harmonic_cut(x(:,j), tracer_x, sigma, cut, cut_sq)
              f1(:,j) = f1(:,j) + tmp + rot_eps*rotate(x(:,j))
              tracer_f1 = tracer_f1 - tmp
           end do
@@ -115,7 +143,7 @@ contains
           f2 = hat(x1, rsq, hat_a, hat_g)
           tracer_f2 = 0
           do j = 1, n_bath
-             tmp = k * harmonic_cut(x1(:,j), tracer_x1, sigma, sigma_sq)
+             tmp = k * harmonic_cut(x1(:,j), tracer_x1, sigma, cut, cut_sq)
              f2(:, j) = f2(:, j) + tmp + rot_eps*rotate(x1(:,j))
              tracer_f2 = tracer_f2 - tmp
           end do
@@ -133,7 +161,7 @@ contains
           if ( radius < 1.d0 ) then
              idx = floor(radius*nbins) + 1
              force_count(idx) = force_count(idx) + 1
-             tmp = k * harmonic_cut(tracer_x, x(:,1), sigma, sigma_sq)
+             tmp = k * harmonic_cut(tracer_x, x(:,1), sigma, cut, cut_sq)
              force(idx) = force(idx) + sum(tracer_x * tmp) / radius
           end if
 
