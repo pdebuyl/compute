@@ -34,6 +34,36 @@ contains
 
   end function hat
 
+  !! Origin potential
+  !! k exp( - x^2 / 2 sigma^2 )
+  pure function gaussian_hat(x, k, sigma) result(f)
+    double precision, intent(in) :: x(dim)
+    double precision, intent(in) :: k, sigma
+    double precision :: f(dim)
+
+    double precision :: rsq
+
+    rsq = sum(x**2)
+
+    f = k * x / sigma**2 * exp(-rsq/(2*sigma**2))
+
+  end function gaussian_hat
+
+  !! Box potential
+  !! k exp( (|x| - sigma) )
+  pure function exponential_box(x, k, sigma) result(f)
+    double precision, intent(in) :: x(dim)
+    double precision, intent(in) :: k, sigma
+    double precision :: f(dim)
+
+    double precision :: r
+
+    r = sqrt(sum(x**2))
+
+    f = - k * ( r - sigma) * exp(r - sigma) * x / (r+1d-8)
+
+  end function exponential_box
+
   pure function harmonic_cut(x1, x2, sigma, cut, cut_sq) result(r)
     double precision, dimension(dim), intent(in) :: x1, x2
     double precision, intent(in) :: sigma, cut, cut_sq
@@ -70,6 +100,23 @@ contains
 
   end function lj_cut
 
+  pure function quartic_cut(x1, x2, sigma, cut, cut_sq) result(r)
+    double precision, dimension(dim), intent(in) :: x1, x2
+    double precision, intent(in) :: sigma, cut, cut_sq
+    double precision, dimension(dim) :: r
+
+    double precision :: dist_sq
+
+    dist_sq = sum((x1-x2)**2)
+
+    if ( dist_sq <= cut_sq ) then
+       r = 4 / cut_sq * ( 1 - dist_sq/cut_sq ) * (x1 - x2)
+    else
+       r = 0
+    end if
+
+  end function quartic_cut
+
   pure function rotate(x) result(f)
     double precision, dimension(dim), intent(in) :: x
     double precision, dimension(dim) :: f
@@ -79,23 +126,33 @@ contains
 
   end function rotate
 
-  subroutine srk_with_tracer(x0, tracer_x0, D, tracer_D, dt, nloop, nsteps, nskip, &
-       hat_a, hat_g, k, sigma, cut, rot_eps, data, tracer_data, force, force_count, pair_force)
+  subroutine srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, &
+       origin_k, origin_sigma, &
+       wall_k, wall_sigma, &
+       probe_wall_k, probe_wall_sigma, &
+       lambda, sigma, cut, &
+       rot_eps, data, probe_data, force, force_count, pair_force)
     double precision, intent(in) :: x0(:,:)
-    double precision, intent(in) :: tracer_x0(:)
-    double precision, intent(in) :: D, tracer_D, dt, hat_a, hat_g, k
-    double precision, intent(in) :: sigma, cut, rot_eps
+    double precision, intent(in) :: probe_x0(:)
+    double precision, intent(in) :: D, probe_D, dt
+    double precision, intent(in) :: origin_k, origin_sigma
+    double precision, intent(in) :: wall_k, wall_sigma
+    double precision, intent(in) :: probe_wall_k, probe_wall_sigma
+    double precision, intent(in) :: lambda, sigma, cut
+    double precision, intent(in) :: rot_eps
     integer, intent(in) :: nloop, nsteps, nskip
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
-         tracer_data(dim, nsteps)
+         probe_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
     integer, intent(out) :: force_count(nbins)
     procedure(pair_force_t) :: pair_force
 
-    double precision, dimension(:,:), allocatable :: x, x1, f1, f2, g0, rsq
-    double precision, dimension(dim) :: tracer_x, tracer_x1, tracer_f1, tracer_f2, tracer_g0
+    double precision, dimension(:,:), allocatable :: x, x1, f1, f2, g0
+    double precision, dimension(dim) :: probe_x, probe_x1, probe_f1, probe_f2, probe_g0
     double precision, dimension(dim) :: tmp
     double precision :: cut_sq, radius
+    double precision :: probe_r
+    double precision :: bath_step, probe_step
     integer :: idx
 
     integer :: i, n_bath, j, i_loop
@@ -104,6 +161,8 @@ contains
 
     n_bath = size(x0, dim=2)
     cut_sq = cut**2
+    bath_step = sqrt(2.d0*D*dt)
+    probe_step = sqrt(2.d0*probe_D*dt)
 
     seed = nint(100*secnds(0.))
     call mtprng_init(seed, state)
@@ -113,62 +172,64 @@ contains
     allocate(f1(dim, n_bath))
     allocate(f2(dim, n_bath))
     allocate(g0(dim, n_bath))
-    allocate(rsq(dim, n_bath))
 
     x = x0
-    tracer_x = tracer_x0
+    probe_x = probe_x0
     force = 0
     force_count = 0
 
     do i = 1, nsteps + nskip
        do i_loop = 1, nloop
-          rsq = spread(sum(x**2 , dim=1), dim=1, ncopies=dim)
-          f1 = hat(x, rsq, hat_a, hat_g)
-          tracer_f1 = 0
+          ! First step of algorithm: x1 = x + D f dt + xi sqrt(2 D dt)
+          probe_f1 = exponential_box(probe_x, probe_wall_k, probe_wall_sigma)
           do j = 1, n_bath
-             tmp = k * harmonic_cut(x(:,j), tracer_x, sigma, cut, cut_sq)
-             f1(:,j) = f1(:,j) + tmp + rot_eps*rotate(x(:,j))
-             tracer_f1 = tracer_f1 - tmp
+             tmp = lambda * pair_force(x(:,j), probe_x, sigma, cut, cut_sq)
+             f1(:,j) = gaussian_hat(x(:,j), origin_k, origin_sigma) + &
+                  exponential_box(x(:,j), wall_k, wall_sigma) + &
+                  tmp + rot_eps*rotate(x(:,j))
+             probe_f1 = probe_f1 - tmp
           end do
           do j=1, n_bath
-             g0(1, j) = mtprng_normal(state)
-             g0(2, j) = mtprng_normal(state)
+             g0(1, j) = mtprng_normal(state) * bath_step
+             g0(2, j) = mtprng_normal(state) * bath_step
           end do
-          g0 = g0 * sqrt(2.d0*D*dt)
-          tracer_g0(1) = mtprng_normal(state) * sqrt(2.d0*tracer_D*dt)
-          tracer_g0(2) = mtprng_normal(state) * sqrt(2.d0*tracer_D*dt)
+          probe_g0(1) = mtprng_normal(state) * probe_step
+          probe_g0(2) = mtprng_normal(state) * probe_step
           x1 = x + D*f1*dt + g0
-          tracer_x1 = tracer_x + D*tracer_f1*dt + tracer_g0
-          rsq = spread(sum(x1**2 , dim=1), dim=1, ncopies=dim)
-          f2 = hat(x1, rsq, hat_a, hat_g)
-          tracer_f2 = 0
+          probe_x1 = probe_x + D*probe_f1*dt + probe_g0
+
+          ! Second step of algorithm: x = x + D (f1 + f2)/2 dt + xi sqrt(2 D dt)
+
+          probe_f2 = exponential_box(probe_x1, probe_wall_k, probe_wall_sigma)
           do j = 1, n_bath
-             tmp = k * harmonic_cut(x1(:,j), tracer_x1, sigma, cut, cut_sq)
-             f2(:, j) = f2(:, j) + tmp + rot_eps*rotate(x1(:,j))
-             tracer_f2 = tracer_f2 - tmp
+             tmp = lambda * pair_force(x1(:,j), probe_x1, sigma, cut, cut_sq)
+             f2(:,j) = gaussian_hat(x1(:,j), origin_k, origin_sigma) + &
+                  exponential_box(x1(:,j), wall_k, wall_sigma) + &
+                  tmp + rot_eps*rotate(x1(:,j))
+             probe_f2 = probe_f2 - tmp
           end do
 
           x = x + D*(f1+f2)*dt/2 + g0
-          tracer_x = tracer_x + tracer_D*(tracer_f1+tracer_f2)*dt/2 + tracer_g0
+          probe_x = probe_x + probe_D*(probe_f1+probe_f2)*dt/2 + probe_g0
 
        end do
 
        if (i > nskip) then
           data(:, :, i - nskip) = x
-          tracer_data(:, i - nskip) = tracer_x
+          probe_data(:, i - nskip) = probe_x
 
-          radius = sqrt(sum(tracer_x**2))
+          radius = sqrt(sum(probe_x**2))
           if ( radius < 1.d0 ) then
              idx = floor(radius*nbins) + 1
              force_count(idx) = force_count(idx) + 1
-             tmp = k * harmonic_cut(tracer_x, x(:,1), sigma, cut, cut_sq)
-             force(idx) = force(idx) + sum(tracer_x * tmp) / radius
+             tmp = lambda * pair_force(probe_x, x(:,1), sigma, cut, cut_sq)
+             force(idx) = force(idx) + sum(probe_x * tmp) / radius
           end if
 
        end if
 
     end do
 
-  end subroutine srk_with_tracer
+  end subroutine srk_with_probe
 
 end module brownian
