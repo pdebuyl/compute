@@ -56,11 +56,12 @@ contains
     double precision, intent(in) :: k, sigma
     double precision :: f(dim)
 
+    double precision, parameter :: n=2
     double precision :: r
 
     r = sqrt(sum(x**2))
 
-    f = - k * ( r - sigma) * exp(r - sigma) * x / (r+1d-8)
+    f = - k * n * exp(n*(r - sigma)) * x / (r+1d-8)
 
   end function exponential_box
 
