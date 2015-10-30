@@ -8,7 +8,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('ID', type=str, help='ID for filename output', nargs='+')
 parser.add_argument('--tracer-Pxy', action='store_true')
 parser.add_argument('--bath-Pxy', action='store_true')
+parser.add_argument('--bath-Pr', action='store_true')
 parser.add_argument('--tracer-field', action='store_true')
+parser.add_argument('--force', action='store_true')
 args = parser.parse_args()
 
 NSKIP=0
@@ -28,7 +30,7 @@ for i, a in enumerate(aa[:N_runs]):
     X_sq = X**2
     X_sqrt = np.sqrt(np.sum(X_sq, axis=1))
     ax = f1.add_subplot(2, 2, i+1)
-    plt.hist(X_sqrt, bins=64, normed=True, weights=1/X_sqrt, range=[0, 4])
+    plt.hist(X_sqrt, bins=64, normed=True, weights=1/X_sqrt)
     if i>1: plt.xlabel(r'probe - $r = \sqrt{x^2+y^2}$')
     if i%2==0: plt.ylabel(r'probe - $P(r)$')
 
@@ -62,14 +64,43 @@ if args.bath_Pxy:
         if i>1: plt.xlabel(r'bath - $x$')
         if i%2==0: plt.ylabel(r'bath - $y$')
 
-f5 = plt.figure()
-for i, a in enumerate(aa[:N_runs]):
-    ax = f5.add_subplot(2, 2, i+1)
-    x = a['x'][NSKIP::STRIDE].reshape((-1,2))
-    x_sqrt = np.sqrt(np.sum(x**2, axis=1))
-    plt.hist(x_sqrt, bins=64, normed=True, weights=1/x_sqrt)
-    if i>1: plt.xlabel(r'bath - $r = \sqrt{x^2+y^2}$')
-    if i%2==0: plt.ylabel(r'bath - $P(r)$')
+if args.bath_Pr:
+    f5 = plt.figure()
+    for i, a in enumerate(aa[:N_runs]):
+        x = a['x'][NSKIP::STRIDE].reshape((-1,2))
+        x = np.sqrt(np.sum(x**2, axis=1))
+        ax = f5.add_subplot(2, 2, i+1)
+        plt.hist(x, bins=64, weights=1/x)
+        if i>1: plt.xlabel(r'bath - $r = \sqrt{x^2+y^2}$')
+        if i%2==0: plt.ylabel(r'bath - $P(r)$')
+
+if False:
+    f6 = plt.figure()
+    for i, a in enumerate(aa[:N_runs]):
+        ax = f5.add_subplot(2, 2, i+1)
+        x = a['x'][NSKIP::STRIDE].reshape((-1,2))
+        x_sqrt = np.sqrt(np.sum(x**2, axis=1))
+        plt.hist(x_sqrt, bins=64, normed=True, weights=1/x_sqrt)
+        if i>1: plt.xlabel(r'bath - $r = \sqrt{x^2+y^2}$')
+        if i%2==0: plt.ylabel(r'bath - $P(r)$')
+
+if args.force:
+    f7 = plt.figure()
+    force_data = []
+    for i, a in enumerate(aa[:N_runs]):
+        force = a['force'][:]
+        force_count = a['force_count'][:]
+        force[force_count > 0] /= force_count[force_count > 0]
+        force_data.append(force)
+        r = a.attrs['probe_wall_s'][()] * (np.arange(force.shape[0])+0.5) / force.shape[0]
+        ax = f7.add_subplot(2, 2, i+1)
+        plt.plot(r, force)
+        if i>1: plt.xlabel(r'probe - $r = \sqrt{x^2+y^2}$')
+        if i%2==0: plt.ylabel(r'probe - $f_r$')
+    force_data = np.array(force_data)
+    plt.figure()
+    plt.plot(r, force_data.mean(axis=0))
+
 
 for a in aa: a.close()
 
