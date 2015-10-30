@@ -13,7 +13,7 @@ module brownian
   implicit none
 
   integer, parameter :: dim = 2
-  integer, parameter :: nbins = 24
+  integer, parameter :: nbins = 256
 
   interface
      pure function pair_force_t(x1, x2, sigma, cut, cut_sq) result(r)
@@ -220,8 +220,8 @@ contains
           probe_data(:, i - nskip) = probe_x
 
           radius = sqrt(sum(probe_x**2))
-          if ( radius < 1.d0 ) then
-             idx = floor(radius*nbins) + 1
+          if ( radius < wall_sigma ) then
+             idx = floor(radius*nbins/wall_sigma) + 1
              force_count(idx) = force_count(idx) + 1
              tmp = lambda * pair_force(probe_x, x(:,1), sigma, cut, cut_sq)
              force(idx) = force(idx) + sum(probe_x * tmp) / radius

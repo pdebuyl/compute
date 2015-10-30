@@ -27,8 +27,8 @@ def srk_with_probe(double[:, ::1] x0, double[::1] probe_x0, double D,
 
     cdef double[:,:,::1]  data = empty((nsteps, n_bath, dim), dtype=np.double)
     cdef double[:,::1] probe_data = empty((nsteps, dim), dtype=np.double)
-    cdef double[::1] force = empty((24,), dtype=np.double)
-    cdef int[::1] force_count = empty((24,), dtype=np.int32)
+    cdef double[::1] force = empty((256,), dtype=np.double)
+    cdef int[::1] force_count = empty((256,), dtype=np.int32)
 
     c_srk_with_probe(&x0[0,0], &probe_x0[0], &D, &probe_D, &dt, &nloop, &nsteps, &nskip,
                      &origin_k, &origin_sigma, &wall_k, &wall_sigma, &probe_wall_k,
