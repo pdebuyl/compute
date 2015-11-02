@@ -127,7 +127,7 @@ contains
 
   end function rotate
 
-  subroutine srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, &
+  subroutine srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, nstride, &
        origin_k, origin_sigma, &
        wall_k, wall_sigma, &
        probe_wall_k, probe_wall_sigma, &
@@ -141,7 +141,7 @@ contains
     double precision, intent(in) :: probe_wall_k, probe_wall_sigma
     double precision, intent(in) :: lambda, sigma, cut
     double precision, intent(in) :: rot_eps
-    integer, intent(in) :: nloop, nsteps, nskip
+    integer, intent(in) :: nloop, nsteps, nskip, nstride
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
          probe_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
@@ -179,7 +179,7 @@ contains
     force = 0
     force_count = 0
 
-    do i = 1, nsteps + nskip
+    do i = 1, (nsteps + nskip)*nstride
        do i_loop = 1, nloop
           ! First step of algorithm: x1 = x + D f dt + xi sqrt(2 D dt)
           probe_f1 = exponential_box(probe_x, probe_wall_k, probe_wall_sigma)
@@ -215,16 +215,23 @@ contains
 
        end do
 
-       if (i > nskip) then
-          data(:, :, i - nskip) = x
-          probe_data(:, i - nskip) = probe_x
+       if (i > nskip*nstride) then
 
+          ! Binning force data
           radius = sqrt(sum(probe_x**2))
           if ( radius < wall_sigma ) then
              idx = floor(radius*nbins/wall_sigma) + 1
              force_count(idx) = force_count(idx) + 1
              tmp = lambda * pair_force(probe_x, x(:,1), sigma, cut, cut_sq)
              force(idx) = force(idx) + sum(probe_x * tmp) / radius
+          end if
+
+          ! Store trajectory every nstride
+          j = i - nskip*nstride
+          if ( modulo(j, nstride) == 1 ) then
+             j = j / nstride + 1
+             data(:, :, j) = x
+             probe_data(:, j) = probe_x
           end if
 
        end if
