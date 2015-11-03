@@ -132,7 +132,7 @@ contains
        wall_k, wall_sigma, &
        probe_wall_k, probe_wall_sigma, &
        lambda, sigma, cut, &
-       rot_eps, data, probe_data, force, force_count, pair_force)
+       rot_eps, data, probe_data, force, force_count, pair_force, seed_in)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: probe_x0(:)
     double precision, intent(in) :: D, probe_D, dt
@@ -146,6 +146,7 @@ contains
          probe_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
     integer, intent(out) :: force_count(nbins)
+    integer, intent(in) :: seed_in
     procedure(pair_force_t) :: pair_force
 
     double precision, dimension(:,:), allocatable :: x, x1, f1, f2, g0
@@ -165,7 +166,11 @@ contains
     bath_step = sqrt(2.d0*D*dt)
     probe_step = sqrt(2.d0*probe_D*dt)
 
-    seed = nint(100*secnds(0.))
+    if (seed_in == 1) then
+       seed = nint(100*secnds(0.))
+    else
+       seed = seed_in
+    end if
     call mtprng_init(seed, state)
 
     allocate(x(dim, n_bath))

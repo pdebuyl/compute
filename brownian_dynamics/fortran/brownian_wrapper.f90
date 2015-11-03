@@ -16,7 +16,7 @@ contains
        probe_wall_k, probe_wall_sigma, &
        lambda, sigma, cut, &
        rot_eps, force_type, &
-       data, probe_data, dim, n_bath, force, force_count) bind(c)
+       data, probe_data, dim, n_bath, force, force_count, seed) bind(c)
     integer(c_int), intent(in) :: dim
     real(c_double), intent(in) :: x0(dim, n_bath)
     real(c_double), intent(in) :: probe_x0(dim)
@@ -29,20 +29,21 @@ contains
     integer(c_int), intent(in) :: n_bath
     real(c_double), intent(out) :: force(nbins)
     integer(c_int), intent(out) :: force_count(nbins)
+    integer(c_int), intent(in) :: seed
 
 
     if (force_type == force_harmonic) then
         call srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, nstride, &
              origin_k, origin_sigma, wall_k, wall_sigma, probe_wall_k, probe_wall_sigma, &
-             lambda, sigma, cut, rot_eps, data, probe_data, force, force_count, harmonic_cut)
+             lambda, sigma, cut, rot_eps, data, probe_data, force, force_count, harmonic_cut, seed)
     else if (force_type == force_lj) then
         call srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, nstride, &
              origin_k, origin_sigma, wall_k, wall_sigma, probe_wall_k, probe_wall_sigma, &
-             lambda, sigma, cut, rot_eps, data, probe_data, force, force_count, lj_cut)
+             lambda, sigma, cut, rot_eps, data, probe_data, force, force_count, lj_cut, seed)
     else if (force_type == force_quartic) then
         call srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, nstride, &
              origin_k, origin_sigma, wall_k, wall_sigma, probe_wall_k, probe_wall_sigma, &
-             lambda, sigma, cut, rot_eps, data, probe_data, force, force_count, quartic_cut)
+             lambda, sigma, cut, rot_eps, data, probe_data, force, force_count, quartic_cut, seed)
     end if
 
   end subroutine c_srk_with_probe

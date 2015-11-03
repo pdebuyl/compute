@@ -14,13 +14,13 @@ cdef extern:
 			   double *rot_eps, int *force_type,
                            double *data,
                            double *probe_data, int *dim, int *n_bath,
-                           double *force, int *force_count)
+                           double *force, int *force_count, int *seed)
 
 def srk_with_probe(double[:, ::1] x0, double[::1] probe_x0, double D,
                     double probe_D, double dt, int nloop, int nsteps, int nskip, int nstride,
 		    double origin_k, double origin_sigma, double wall_k,
 		    double wall_sigma, double probe_wall_k, double probe_wall_sigma,
-                    double lam, double sigma, double cut, double rot_eps, int force_type):
+                    double lam, double sigma, double cut, double rot_eps, int force_type, int seed):
     cdef int dim = x0.shape[1]
     cdef int n_bath = x0.shape[0]
     assert dim == probe_x0.shape[0]
@@ -34,6 +34,6 @@ def srk_with_probe(double[:, ::1] x0, double[::1] probe_x0, double D,
                      &origin_k, &origin_sigma, &wall_k, &wall_sigma, &probe_wall_k,
                      &probe_wall_sigma, &lam, &sigma, &cut,
                      &rot_eps, &force_type,
-                     &data[0,0,0], &probe_data[0,0], &dim, &n_bath, &force[0], &force_count[0])
+                     &data[0,0,0], &probe_data[0,0], &dim, &n_bath, &force[0], &force_count[0], &seed)
 
     return np.asarray(data), np.asarray(probe_data), np.asarray(force), np.asarray(force_count)
