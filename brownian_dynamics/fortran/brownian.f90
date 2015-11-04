@@ -227,7 +227,10 @@ contains
           if ( radius < wall_sigma ) then
              idx = floor(radius*nbins/wall_sigma) + 1
              force_count(idx) = force_count(idx) + 1
-             tmp = lambda * pair_force(probe_x, x(:,1), sigma, cut, cut_sq)
+             tmp = 0
+             do j = 1, n_bath
+                tmp = tmp + lambda * pair_force(probe_x, x(:,j), sigma, cut, cut_sq)
+             end do
              force(idx) = force(idx) + sum(probe_x * tmp) / radius
           end if
 
