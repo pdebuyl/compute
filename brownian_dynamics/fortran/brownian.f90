@@ -236,8 +236,8 @@ contains
 
           ! Store trajectory every nstride
           j = i - nskip*nstride
-          if ( modulo(j, nstride) == 1 ) then
-             j = j / nstride + 1
+          if ( modulo(j, nstride) == 0 ) then
+             j = j / nstride
              data(:, :, j) = x
              probe_data(:, j) = probe_x
           end if
