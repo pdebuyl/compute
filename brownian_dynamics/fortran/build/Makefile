@@ -14,4 +14,10 @@ all: libbrownian.so
 libbrownian.so: stdtypes.o mtprng.o brownian.o brownian_wrapper.o
 	$(LD) $(LDFLAGS) -o $@ $^ -lgfortran
 
+run_brownian: stdtypes.o mtprng.o brownian.o run_brownian.o
+	$(FC) $(FCFLAGS) -o $@ $^
 
+clean:
+	rm -f *.o run_brownian
+
+.PHONY: clean
