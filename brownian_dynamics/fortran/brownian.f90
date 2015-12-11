@@ -23,6 +23,20 @@ module brownian
      end function pair_force_t
   end interface
 
+  type, bind(c) :: sea_probe_t
+     !> bath parameters
+     double precision :: D, rot_eps
+     double precision :: origin_k, origin_sigma
+     double precision :: wall_k, wall_sigma
+     !> probe parameters
+     double precision :: probe_D
+     double precision :: probe_wall_k, probe_wall_sigma
+     !> interaction
+     integer :: force_type
+     double precision :: lambda, sigma, sigma_cut, sigma_cut_sq
+     double precision :: mu, sigma_0
+  end type sea_probe_t
+
 contains
 
   pure function hat(x, x_sq, hat_a, hat_g) result(f)
@@ -127,20 +141,12 @@ contains
 
   end function rotate
 
-  subroutine srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, nstride, &
-       origin_k, origin_sigma, &
-       wall_k, wall_sigma, &
-       probe_wall_k, probe_wall_sigma, &
-       lambda, sigma, cut, &
-       rot_eps, data, probe_data, force, force_count, pair_force, seed_in)
+  subroutine srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
+       data, probe_data, force, force_count, pair_force, seed_in)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: probe_x0(:)
-    double precision, intent(in) :: D, probe_D, dt
-    double precision, intent(in) :: origin_k, origin_sigma
-    double precision, intent(in) :: wall_k, wall_sigma
-    double precision, intent(in) :: probe_wall_k, probe_wall_sigma
-    double precision, intent(in) :: lambda, sigma, cut
-    double precision, intent(in) :: rot_eps
+    type(sea_probe_t), intent(in) :: params
+    double precision, intent(in) :: dt
     integer, intent(in) :: nloop, nsteps, nskip, nstride
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
          probe_data(dim, nsteps)
@@ -161,8 +167,28 @@ contains
     integer(INT32) :: seed
     type(mtprng_state) :: state
 
+    double precision :: D, probe_D
+    double precision :: origin_k, origin_sigma
+    double precision :: wall_k, wall_sigma
+    double precision :: probe_wall_k, probe_wall_sigma
+    double precision :: lambda, sigma, cut
+    double precision:: rot_eps
+
+    D = params%D
+    rot_eps = params%rot_eps
+    origin_k = params%origin_k
+    origin_sigma = params%origin_sigma
+    wall_k = params%wall_k
+    wall_sigma = params%wall_sigma
+    probe_D = params%probe_D
+    probe_wall_k = params%probe_wall_k
+    probe_wall_sigma = params%probe_wall_sigma
+    lambda = params%lambda
+    sigma = params%sigma
+    cut = params%sigma_cut
+    cut_sq = params%sigma_cut_sq
+
     n_bath = size(x0, dim=2)
-    cut_sq = cut**2
     bath_step = sqrt(2.d0*D*dt)
     probe_step = sqrt(2.d0*probe_D*dt)
 

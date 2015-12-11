@@ -23,8 +23,13 @@ parser.add_argument('--lam', type=float, default=1.)
 parser.add_argument('--sigma', type=float, default=1.)
 parser.add_argument('--cut', type=float, default=1.)
 parser.add_argument('--epsilon', type=float, default=0)
-parser.add_argument('--D-probe', type=float, default=0.001)
+parser.add_argument('--probe-D', type=float, default=0.001)
+parser.add_argument('--D', type=float, default=1.0)
+parser.add_argument('--force-type', type=int, default=3)
 parser.add_argument('--seed', type=int, default=1)
+parser.add_argument('--mu', type=float, default=0)
+parser.add_argument('--sigma_0', type=float, default=0)
+parser.add_argument('--dt', type=float, default=0.01)
 args = parser.parse_args()
 
 a = h5py.File('trajectory_%s.h5' % args.ID, 'w')
@@ -35,10 +40,7 @@ t0 = time.time()
 
 x0 = np.zeros((args.N,2))
 X0 = np.array(args.X0)
-print X0
-x, X, force, force_count = brownian_wrapper.srk_with_probe(x0, X0, 1., args.D_probe, 0.01, args.loop, args.steps, args.skip, args.stride, args.origin_k,
-                                       args.origin_s, args.wall_k, args.wall_s, args.probe_wall_k, args.probe_wall_s,
-                                       args.lam, args.sigma, args.cut, args.epsilon, 3, args.seed)
+x, X, force, force_count = brownian_wrapper.srk_with_probe(x0, X0, args)
 a['x'] = x
 a['X'] = X
 a['force'] = force
