@@ -158,7 +158,7 @@ contains
     double precision, dimension(:,:), allocatable :: x, x1, f1, f2, g0
     double precision, dimension(dim) :: probe_x, probe_x1, probe_f1, probe_f2, probe_g0
     double precision, dimension(dim) :: tmp
-    double precision :: cut_sq, radius
+    double precision :: radius
     double precision :: probe_r
     double precision :: bath_step, probe_step
     integer :: idx
@@ -167,30 +167,9 @@ contains
     integer(INT32) :: seed
     type(mtprng_state) :: state
 
-    double precision :: D, probe_D
-    double precision :: origin_k, origin_sigma
-    double precision :: wall_k, wall_sigma
-    double precision :: probe_wall_k, probe_wall_sigma
-    double precision :: lambda, sigma, cut
-    double precision:: rot_eps
-
-    D = params%D
-    rot_eps = params%rot_eps
-    origin_k = params%origin_k
-    origin_sigma = params%origin_sigma
-    wall_k = params%wall_k
-    wall_sigma = params%wall_sigma
-    probe_D = params%probe_D
-    probe_wall_k = params%probe_wall_k
-    probe_wall_sigma = params%probe_wall_sigma
-    lambda = params%lambda
-    sigma = params%sigma
-    cut = params%sigma_cut
-    cut_sq = params%sigma_cut_sq
-
     n_bath = size(x0, dim=2)
-    bath_step = sqrt(2.d0*D*dt)
-    probe_step = sqrt(2.d0*probe_D*dt)
+    bath_step = sqrt(2.d0*params%D*dt)
+    probe_step = sqrt(2.d0*params%probe_D*dt)
 
     if (seed_in == 1) then
        seed = nint(100*secnds(0.))
@@ -213,12 +192,12 @@ contains
     do i = 1, (nsteps + nskip)*nstride
        do i_loop = 1, nloop
           ! First step of algorithm: x1 = x + D f dt + xi sqrt(2 D dt)
-          probe_f1 = exponential_box(probe_x, probe_wall_k, probe_wall_sigma)
+          probe_f1 = exponential_box(probe_x, params%probe_wall_k, params%probe_wall_sigma)
           do j = 1, n_bath
-             tmp = lambda * pair_force(x(:,j), probe_x, sigma, cut, cut_sq)
-             f1(:,j) = gaussian_hat(x(:,j), origin_k, origin_sigma) + &
-                  exponential_box(x(:,j), wall_k, wall_sigma) + &
-                  tmp + rot_eps*rotate(x(:,j))
+             tmp = params%lambda * pair_force(x(:,j), probe_x, params%sigma, params%sigma_cut, params%sigma_cut_sq)
+             f1(:,j) = gaussian_hat(x(:,j), params%origin_k, params%origin_sigma) + &
+                  exponential_box(x(:,j), params%wall_k, params%wall_sigma) + &
+                  tmp + params%rot_eps*rotate(x(:,j))
              probe_f1 = probe_f1 - tmp
           end do
           do j=1, n_bath
@@ -227,22 +206,22 @@ contains
           end do
           probe_g0(1) = mtprng_normal(state) * probe_step
           probe_g0(2) = mtprng_normal(state) * probe_step
-          x1 = x + D*f1*dt + g0
-          probe_x1 = probe_x + D*probe_f1*dt + probe_g0
+          x1 = x + params%D*f1*dt + g0
+          probe_x1 = probe_x + params%probe_D*probe_f1*dt + probe_g0
 
           ! Second step of algorithm: x = x + D (f1 + f2)/2 dt + xi sqrt(2 D dt)
 
-          probe_f2 = exponential_box(probe_x1, probe_wall_k, probe_wall_sigma)
+          probe_f2 = exponential_box(probe_x1, params%probe_wall_k, params%probe_wall_sigma)
           do j = 1, n_bath
-             tmp = lambda * pair_force(x1(:,j), probe_x1, sigma, cut, cut_sq)
-             f2(:,j) = gaussian_hat(x1(:,j), origin_k, origin_sigma) + &
-                  exponential_box(x1(:,j), wall_k, wall_sigma) + &
-                  tmp + rot_eps*rotate(x1(:,j))
+             tmp = params%lambda * pair_force(x1(:,j), probe_x1, params%sigma, params%sigma_cut, params%sigma_cut_sq)
+             f2(:,j) = gaussian_hat(x1(:,j), params%origin_k, params%origin_sigma) + &
+                  exponential_box(x1(:,j), params%wall_k, params%wall_sigma) + &
+                  tmp + params%rot_eps*rotate(x1(:,j))
              probe_f2 = probe_f2 - tmp
           end do
 
-          x = x + D*(f1+f2)*dt/2 + g0
-          probe_x = probe_x + probe_D*(probe_f1+probe_f2)*dt/2 + probe_g0
+          x = x + params%D*(f1+f2)*dt/2 + g0
+          probe_x = probe_x + params%probe_D*(probe_f1+probe_f2)*dt/2 + probe_g0
 
        end do
 
@@ -250,12 +229,12 @@ contains
 
           ! Binning force data
           radius = sqrt(sum(probe_x**2))
-          if ( radius < wall_sigma ) then
-             idx = floor(radius*nbins/wall_sigma) + 1
+          if ( radius < params%wall_sigma ) then
+             idx = floor(radius*nbins/params%wall_sigma) + 1
              force_count(idx) = force_count(idx) + 1
              tmp = 0
              do j = 1, n_bath
-                tmp = tmp + lambda * pair_force(probe_x, x(:,j), sigma, cut, cut_sq)
+                tmp = tmp + params%lambda * pair_force(probe_x, x(:,j), params%sigma, params%sigma_cut, params%sigma_cut_sq)
              end do
              force(idx) = force(idx) + sum(probe_x * tmp) / radius
           end if
