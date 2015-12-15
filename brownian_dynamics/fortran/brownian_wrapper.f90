@@ -11,7 +11,7 @@ module brownian_wrapper
 contains
 
   subroutine c_srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
-       data, probe_data, dim, n_bath, force, force_count, seed) bind(c)
+       data, probe_data, dim, n_bath, force, force_count, bath_count, seed) bind(c)
     integer(c_int), intent(in) :: dim
     real(c_double), intent(in) :: x0(dim, n_bath)
     real(c_double), intent(in) :: probe_x0(dim)
@@ -23,18 +23,19 @@ contains
     integer(c_int), intent(in) :: n_bath
     real(c_double), intent(out) :: force(nbins)
     integer(c_int), intent(out) :: force_count(nbins)
+    integer(c_int), intent(out), dimension(nbins) :: bath_count
     integer(c_int), intent(in) :: seed
 
 
     if (params%force_type == force_harmonic) then
         call srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
-             data, probe_data, force, force_count, harmonic_cut, seed)
+             data, probe_data, force, force_count, bath_count, harmonic_cut, seed)
     else if (params%force_type == force_lj) then
         call srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
-             data, probe_data, force, force_count, lj_cut, seed)
+             data, probe_data, force, force_count, bath_count, lj_cut, seed)
     else if (params%force_type == force_quartic) then
         call srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
-             data, probe_data, force, force_count, quartic_cut, seed)
+             data, probe_data, force, force_count, bath_count, quartic_cut, seed)
     end if
 
   end subroutine c_srk_with_probe

@@ -142,7 +142,7 @@ contains
   end function rotate
 
   subroutine srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
-       data, probe_data, force, force_count, pair_force, seed_in)
+       data, probe_data, force, force_count, bath_count, pair_force, seed_in)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: probe_x0(:)
     type(sea_probe_t), intent(in) :: params
@@ -152,6 +152,7 @@ contains
          probe_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
     integer, intent(out) :: force_count(nbins)
+    integer, intent(out), dimension(nbins) :: bath_count
     integer, intent(in) :: seed_in
     procedure(pair_force_t) :: pair_force
 
@@ -188,6 +189,7 @@ contains
     probe_x = probe_x0
     force = 0
     force_count = 0
+    bath_count = 0
 
     do i = 1, (nsteps + nskip)*nstride
        do i_loop = 1, nloop
@@ -238,6 +240,14 @@ contains
              end do
              force(idx) = force(idx) + sum(probe_x * tmp) / radius
           end if
+
+          do j = 1, n_bath
+             radius = sqrt(sum(x(:,j)**2))
+             if ( radius < params%wall_sigma ) then
+                idx = floor(radius*nbins/params%wall_sigma) + 1
+                bath_count(idx) = bath_count(idx) + 1
+             end if
+          end do
 
           ! Store trajectory every nstride
           j = i - nskip*nstride
