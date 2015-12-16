@@ -29,8 +29,9 @@ N_runs = min(len(args.ID), 4)
 def radial_hist(data, nbins, nsteps=1):
     count, bins = np.histogram(data, bins=nbins)
     mid_bins = (bins[1:] + bins[:-1]) / 2.
+    dr = bins[1]-bins[0]
     count = np.array(count, dtype=float)
-    count /= 2*np.pi*mid_bins*nsteps
+    count /= 2*np.pi*mid_bins*nsteps*dr
     return count, bins
 
 def plot_radial_hist(count, bins):
