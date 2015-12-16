@@ -51,6 +51,7 @@ for i in range(args.repeat):
     force_data.append(force)
     force_count_data.append(force_count)
     bath_count_data.append(bath_count)
+    args.skip=0
 a['x'] = x
 a['X'] = X
 a['force'] = np.array(force_data).sum(axis=0)
