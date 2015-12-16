@@ -99,18 +99,15 @@ if False:
 
 if args.force:
     f7 = plt.figure()
-    force_data = []
     for i, a in enumerate(aa[:N_runs]):
         force = a['force'][:]
         force_count = a['force_count'][:]
         force[force_count > 0] /= force_count[force_count > 0]
-        force_data.append(force)
         r = a.attrs['probe_wall_s'][()] * (np.arange(force.shape[0])+0.5) / force.shape[0]
         ax = f7.add_subplot(2, 2, i+1)
-        ax.plot(r, force)
-        if i>1: ax.set_xlabel(r'probe - $r = \sqrt{x^2+y^2}$')
-        if i%2==0: ax.set_ylabel(r'probe - $f_r$')
-    force_data = np.array(force_data)
+        plt.plot(r, force)
+        if i>1: plt.xlabel(r'probe - $r = \sqrt{x^2+y^2}$')
+        if i%2==0: plt.ylabel(r'probe - $f_r$')
 
 for a in aa: a.close()
 

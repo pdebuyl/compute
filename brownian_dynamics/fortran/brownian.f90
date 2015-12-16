@@ -23,6 +23,20 @@ module brownian
      end function pair_force_t
   end interface
 
+  type, bind(c) :: sea_probe_t
+     !> bath parameters
+     double precision :: D, rot_eps
+     double precision :: origin_k, origin_sigma
+     double precision :: wall_k, wall_sigma
+     !> probe parameters
+     double precision :: probe_D
+     double precision :: probe_wall_k, probe_wall_sigma
+     !> interaction
+     integer :: force_type
+     double precision :: lambda, sigma, sigma_cut, sigma_cut_sq
+     double precision :: mu, sigma_0
+  end type sea_probe_t
+
 contains
 
   pure function hat(x, x_sq, hat_a, hat_g) result(f)
@@ -127,32 +141,25 @@ contains
 
   end function rotate
 
-  subroutine srk_with_probe(x0, probe_x0, D, probe_D, dt, nloop, nsteps, nskip, nstride, &
-       origin_k, origin_sigma, &
-       wall_k, wall_sigma, &
-       probe_wall_k, probe_wall_sigma, &
-       lambda, sigma, cut, &
-       rot_eps, data, probe_data, force, force_count, pair_force, seed_in)
+  subroutine srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
+       data, probe_data, force, force_count, bath_count, pair_force, seed_in)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: probe_x0(:)
-    double precision, intent(in) :: D, probe_D, dt
-    double precision, intent(in) :: origin_k, origin_sigma
-    double precision, intent(in) :: wall_k, wall_sigma
-    double precision, intent(in) :: probe_wall_k, probe_wall_sigma
-    double precision, intent(in) :: lambda, sigma, cut
-    double precision, intent(in) :: rot_eps
+    type(sea_probe_t), intent(in) :: params
+    double precision, intent(in) :: dt
     integer, intent(in) :: nloop, nsteps, nskip, nstride
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
          probe_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
     integer, intent(out) :: force_count(nbins)
+    integer, intent(out), dimension(nbins) :: bath_count
     integer, intent(in) :: seed_in
     procedure(pair_force_t) :: pair_force
 
     double precision, dimension(:,:), allocatable :: x, x1, f1, f2, g0
     double precision, dimension(dim) :: probe_x, probe_x1, probe_f1, probe_f2, probe_g0
     double precision, dimension(dim) :: tmp
-    double precision :: cut_sq, radius
+    double precision :: radius
     double precision :: probe_r
     double precision :: bath_step, probe_step
     integer :: idx
@@ -162,9 +169,8 @@ contains
     type(mtprng_state) :: state
 
     n_bath = size(x0, dim=2)
-    cut_sq = cut**2
-    bath_step = sqrt(2.d0*D*dt)
-    probe_step = sqrt(2.d0*probe_D*dt)
+    bath_step = sqrt(2.d0*params%D*dt)
+    probe_step = sqrt(2.d0*params%probe_D*dt)
 
     if (seed_in == 1) then
        seed = nint(100*secnds(0.))
@@ -183,16 +189,17 @@ contains
     probe_x = probe_x0
     force = 0
     force_count = 0
+    bath_count = 0
 
     do i = 1, (nsteps + nskip)*nstride
        do i_loop = 1, nloop
           ! First step of algorithm: x1 = x + D f dt + xi sqrt(2 D dt)
-          probe_f1 = exponential_box(probe_x, probe_wall_k, probe_wall_sigma)
+          probe_f1 = exponential_box(probe_x, params%probe_wall_k, params%probe_wall_sigma)
           do j = 1, n_bath
-             tmp = lambda * pair_force(x(:,j), probe_x, sigma, cut, cut_sq)
-             f1(:,j) = gaussian_hat(x(:,j), origin_k, origin_sigma) + &
-                  exponential_box(x(:,j), wall_k, wall_sigma) + &
-                  tmp + rot_eps*rotate(x(:,j))
+             tmp = params%lambda * pair_force(x(:,j), probe_x, params%sigma, params%sigma_cut, params%sigma_cut_sq)
+             f1(:,j) = gaussian_hat(x(:,j), params%origin_k, params%origin_sigma) + &
+                  exponential_box(x(:,j), params%wall_k, params%wall_sigma) + &
+                  tmp + params%rot_eps*rotate(x(:,j))
              probe_f1 = probe_f1 - tmp
           end do
           do j=1, n_bath
@@ -201,22 +208,22 @@ contains
           end do
           probe_g0(1) = mtprng_normal(state) * probe_step
           probe_g0(2) = mtprng_normal(state) * probe_step
-          x1 = x + D*f1*dt + g0
-          probe_x1 = probe_x + D*probe_f1*dt + probe_g0
+          x1 = x + params%D*f1*dt + g0
+          probe_x1 = probe_x + params%probe_D*probe_f1*dt + probe_g0
 
           ! Second step of algorithm: x = x + D (f1 + f2)/2 dt + xi sqrt(2 D dt)
 
-          probe_f2 = exponential_box(probe_x1, probe_wall_k, probe_wall_sigma)
+          probe_f2 = exponential_box(probe_x1, params%probe_wall_k, params%probe_wall_sigma)
           do j = 1, n_bath
-             tmp = lambda * pair_force(x1(:,j), probe_x1, sigma, cut, cut_sq)
-             f2(:,j) = gaussian_hat(x1(:,j), origin_k, origin_sigma) + &
-                  exponential_box(x1(:,j), wall_k, wall_sigma) + &
-                  tmp + rot_eps*rotate(x1(:,j))
+             tmp = params%lambda * pair_force(x1(:,j), probe_x1, params%sigma, params%sigma_cut, params%sigma_cut_sq)
+             f2(:,j) = gaussian_hat(x1(:,j), params%origin_k, params%origin_sigma) + &
+                  exponential_box(x1(:,j), params%wall_k, params%wall_sigma) + &
+                  tmp + params%rot_eps*rotate(x1(:,j))
              probe_f2 = probe_f2 - tmp
           end do
 
-          x = x + D*(f1+f2)*dt/2 + g0
-          probe_x = probe_x + probe_D*(probe_f1+probe_f2)*dt/2 + probe_g0
+          x = x + params%D*(f1+f2)*dt/2 + g0
+          probe_x = probe_x + params%probe_D*(probe_f1+probe_f2)*dt/2 + probe_g0
 
        end do
 
@@ -224,15 +231,23 @@ contains
 
           ! Binning force data
           radius = sqrt(sum(probe_x**2))
-          if ( radius < wall_sigma ) then
-             idx = floor(radius*nbins/wall_sigma) + 1
+          if ( radius < params%wall_sigma ) then
+             idx = floor(radius*nbins/params%wall_sigma) + 1
              force_count(idx) = force_count(idx) + 1
              tmp = 0
              do j = 1, n_bath
-                tmp = tmp + lambda * pair_force(probe_x, x(:,j), sigma, cut, cut_sq)
+                tmp = tmp + params%lambda * pair_force(probe_x, x(:,j), params%sigma, params%sigma_cut, params%sigma_cut_sq)
              end do
              force(idx) = force(idx) + sum(probe_x * tmp) / radius
           end if
+
+          do j = 1, n_bath
+             radius = sqrt(sum(x(:,j)**2))
+             if ( radius < params%wall_sigma ) then
+                idx = floor(radius*nbins/params%wall_sigma) + 1
+                bath_count(idx) = bath_count(idx) + 1
+             end if
+          end do
 
           ! Store trajectory every nstride
           j = i - nskip*nstride
