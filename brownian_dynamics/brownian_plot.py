@@ -1,3 +1,4 @@
+from __future__ import division
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +15,7 @@ parser.add_argument('--force', action='store_true')
 args = parser.parse_args()
 
 NSKIP=0
-STRIDE=10
+STRIDE=1
 QUIV_STR=10
 
 aa = []
@@ -25,12 +26,23 @@ f1 = plt.figure()
 
 N_runs = min(len(args.ID), 4)
 
+def radial_hist(data, nbins, nsteps=1):
+    count, bins = np.histogram(data, bins=nbins)
+    mid_bins = (bins[1:] + bins[:-1]) / 2.
+    count = np.array(count, dtype=float)
+    count /= 2*np.pi*mid_bins*nsteps
+    return count, bins
+
+def plot_radial_hist(count, bins):
+    plt.bar(bins[:-1], count, width=np.diff(bins))
+
+
 for i, a in enumerate(aa[:N_runs]):
     X = a['X'][NSKIP::STRIDE]
-    X_sq = X**2
-    X_sqrt = np.sqrt(np.sum(X_sq, axis=1))
+    X_sqrt = np.sqrt(np.sum(X**2, axis=1))
     ax = f1.add_subplot(2, 2, i+1)
-    plt.hist(X_sqrt, bins=64, normed=True, weights=1/X_sqrt)
+    count, bins = radial_hist(X_sqrt, nbins=64, nsteps=a['X'].shape[0])
+    plot_radial_hist(count, bins)
     if i>1: plt.xlabel(r'probe - $r = \sqrt{x^2+y^2}$')
     if i%2==0: plt.ylabel(r'probe - $P(r)$')
 
@@ -70,7 +82,8 @@ if args.bath_Pr:
         x = a['x'][NSKIP::STRIDE].reshape((-1,2))
         x = np.sqrt(np.sum(x**2, axis=1))
         ax = f5.add_subplot(2, 2, i+1)
-        plt.hist(x, bins=64, weights=1/x)
+        count, bins = radial_hist(x, nbins=64, nsteps=a['x'].shape[0])
+        plot_radial_hist(count, bins)
         if i>1: plt.xlabel(r'bath - $r = \sqrt{x^2+y^2}$')
         if i%2==0: plt.ylabel(r'bath - $P(r)$')
 
@@ -86,7 +99,6 @@ if False:
 
 if args.force:
     f7 = plt.figure()
-    force_data = []
     for i, a in enumerate(aa[:N_runs]):
         force = a['force'][:]
         force_count = a['force_count'][:]
