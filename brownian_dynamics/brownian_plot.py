@@ -37,6 +37,9 @@ def radial_hist(data, nbins, nsteps=1):
 def plot_radial_hist(count, bins):
     plt.bar(bins[:-1], count, width=np.diff(bins))
 
+def simul_hist(ds, sigma, nsteps):
+    l = ds.shape[0] ; r = (np.arange(l)+0.5)*sigma/l ; dr = r[1] - r[0]
+    plt.plot(r, ds[:] / (2*np.pi*r*dr*nsteps), color='r')
 
 for i, a in enumerate(aa[:N_runs]):
     X = a['X'][NSKIP::STRIDE]
@@ -44,6 +47,7 @@ for i, a in enumerate(aa[:N_runs]):
     ax = f1.add_subplot(2, 2, i+1)
     count, bins = radial_hist(X_sqrt, nbins=64, nsteps=a['X'].shape[0])
     plot_radial_hist(count, bins)
+    simul_hist(a['force_count'], a.attrs['wall_s'][()], nsteps=a.attrs['steps'][()]*a.attrs['repeat'][()])
     if i>1: plt.xlabel(r'probe - $r = \sqrt{x^2+y^2}$')
     if i%2==0: plt.ylabel(r'probe - $P(r)$')
 
@@ -85,6 +89,7 @@ if args.bath_Pr:
         ax = f5.add_subplot(2, 2, i+1)
         count, bins = radial_hist(x, nbins=64, nsteps=a['x'].shape[0])
         plot_radial_hist(count, bins)
+        simul_hist(a['bath_count'], a.attrs['wall_s'][()], nsteps=a.attrs['steps'][()]*a.attrs['repeat'][()])
         if i>1: plt.xlabel(r'bath - $r = \sqrt{x^2+y^2}$')
         if i%2==0: plt.ylabel(r'bath - $P(r)$')
 
