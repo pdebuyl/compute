@@ -31,6 +31,7 @@ parser.add_argument('--seed', type=int, default=1)
 parser.add_argument('--mu', type=float, default=0)
 parser.add_argument('--sigma_0', type=float, default=0)
 parser.add_argument('--dt', type=float, default=0.01)
+parser.add_argument('--traj', action='store_true')
 args = parser.parse_args()
 
 a = h5py.File('trajectory_%s.h5' % args.ID, 'w')
@@ -52,8 +53,11 @@ for i in range(args.repeat):
     force_count_data.append(force_count)
     bath_count_data.append(bath_count)
     args.skip=0
-a['x'] = x
-a['X'] = X
+
+if args.traj:
+    a['X'] = X
+    a['x'] = x
+
 a['force'] = np.array(force_data).sum(axis=0)
 a['force_count'] = np.array(force_count_data).sum(axis=0)
 a['bath_count'] = np.array(bath_count_data).sum(axis=0)
