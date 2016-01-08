@@ -43,15 +43,19 @@ t0 = time.time()
 x0 = np.zeros((args.N,2))
 X0 = np.array(args.X0)
 force_data = []
+force_theta_data = []
 force_count_data = []
 bath_count_data = []
+bath_count_theta_data = []
 for i in range(args.repeat):
-    x, X, force, force_count, bath_count = brownian_wrapper.srk_with_probe(x0, X0, args)
+    x, X, force, force_theta, force_count, bath_count, bath_count_theta = brownian_wrapper.srk_with_probe(x0, X0, args)
     x0 = x[-1]
     X0 = X[-1]
     force_data.append(force)
+    force_theta_data.append(force_theta)
     force_count_data.append(force_count)
     bath_count_data.append(bath_count)
+    bath_count_theta_data.append(bath_count_theta)
     args.skip=0
 
 if args.traj:
@@ -59,8 +63,10 @@ if args.traj:
     a['x'] = x
 
 a['force'] = np.array(force_data).sum(axis=0)
+a['force_theta'] = np.array(force_theta_data).sum(axis=0)
 a['force_count'] = np.array(force_count_data).sum(axis=0)
 a['bath_count'] = np.array(bath_count_data).sum(axis=0)
+a['bath_count_theta'] = np.array(bath_count_theta_data).sum(axis=0)
 
 a.close()
 

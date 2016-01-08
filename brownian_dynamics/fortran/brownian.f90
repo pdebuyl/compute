@@ -14,6 +14,7 @@ module brownian
 
   integer, parameter :: dim = 2
   integer, parameter :: nbins = 256
+  double precision, parameter :: pi = 4.d0*atan(1.d0)
 
   interface
      pure function pair_force_t(x1, x2, sigma, cut, cut_sq) result(r)
@@ -142,7 +143,8 @@ contains
   end function rotate
 
   subroutine srk_with_probe(x0, probe_x0, params, dt, nloop, nsteps, nskip, nstride, &
-       data, probe_data, force, force_count, bath_count, pair_force, seed_in)
+       data, probe_data, force, force_theta, force_count, bath_count, bath_count_theta, pair_force, &
+       seed_in)
     double precision, intent(in) :: x0(:,:)
     double precision, intent(in) :: probe_x0(:)
     type(sea_probe_t), intent(in) :: params
@@ -151,8 +153,10 @@ contains
     double precision, intent(out) :: data(dim, size(x0, dim=2), nsteps), &
          probe_data(dim, nsteps)
     double precision, intent(out) :: force(nbins)
+    double precision, intent(out) :: force_theta(nbins)
     integer, intent(out) :: force_count(nbins)
     integer, intent(out), dimension(nbins) :: bath_count
+    integer, intent(out), dimension(nbins) :: bath_count_theta
     integer, intent(in) :: seed_in
     procedure(pair_force_t) :: pair_force
 
@@ -162,7 +166,9 @@ contains
     double precision :: radius
     double precision :: probe_r
     double precision :: bath_step, probe_step
-    integer :: idx
+    double precision :: theta_probe, theta_bath
+    integer :: idx, theta_idx
+    double precision :: unit_theta(dim)
 
     integer :: i, n_bath, j, i_loop
     integer(INT32) :: seed
@@ -188,8 +194,10 @@ contains
     x = x0
     probe_x = probe_x0
     force = 0
+    force_theta = 0
     force_count = 0
     bath_count = 0
+    bath_count_theta = 0
 
     do i = 1, (nsteps + nskip)*nstride
        do i_loop = 1, nloop
@@ -238,14 +246,20 @@ contains
              do j = 1, n_bath
                 tmp = tmp + params%lambda * pair_force(probe_x, x(:,j), params%sigma, params%sigma_cut, params%sigma_cut_sq)
              end do
-             force(idx) = force(idx) + sum(probe_x * tmp) / radius
+             force(idx) = force(idx) + dot_product(probe_x,tmp) / radius
+             unit_theta = [ -probe_x(2)/radius, probe_x(1)/radius ]
+             force_theta(idx) = force_theta(idx) + dot_product(unit_theta, tmp)
           end if
 
+          theta_probe = atan2(probe_x(2), probe_x(1))
           do j = 1, n_bath
              radius = sqrt(sum(x(:,j)**2))
              if ( radius < params%wall_sigma ) then
                 idx = floor(radius*nbins/params%wall_sigma) + 1
                 bath_count(idx) = bath_count(idx) + 1
+                theta_bath = modulo(atan2(x(2,j), x(1,j)) - theta_probe, 2*pi)
+                theta_idx = floor(theta_bath*nbins/(2*pi)) + 1
+                bath_count_theta(theta_idx) = bath_count_theta(theta_idx) + 1
              end if
           end do
 

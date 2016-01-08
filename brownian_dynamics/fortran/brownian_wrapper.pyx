@@ -15,11 +15,13 @@ cdef extern:
         double lam, sigma, sigma_cut, sigma_cut_sq
         double mu, sigma_0
 
-    void c_srk_with_probe(double *x0, double *probe_x0,
-                          sea_probe_t *params,
-                           double *dt, int *nloop, int *nsteps, int *nskip, int *nstride,
-                           double *data, double *probe_data, int *dim, int *n_bath,
-                           double *force, int *force_count, int *bath_count, int *seed)
+    void c_srk_with_probe(double *x0, double *probe_x0, sea_probe_t
+                          *params, double *dt, int *nloop, int
+                          *nsteps, int *nskip, int *nstride, double
+                          *data, double *probe_data, int *dim, int
+                          *n_bath, double *force, double *force_theta,
+                          int *force_count, int *bath_count, int *bath_count_theta,
+			  int *seed)
 
 def srk_with_probe(double[:, ::1] x0, double[::1] probe_x0, params):
     cdef int dim = x0.shape[1]
@@ -37,8 +39,10 @@ def srk_with_probe(double[:, ::1] x0, double[::1] probe_x0, params):
     cdef double[:,:,::1]  data = empty((nsteps, n_bath, dim), dtype=np.double)
     cdef double[:,::1] probe_data = empty((nsteps, dim), dtype=np.double)
     cdef double[::1] force = empty((256,), dtype=np.double)
+    cdef double[::1] force_theta = empty((256,), dtype=np.double)
     cdef int[::1] force_count = empty((256,), dtype=np.int32)
     cdef int[::1] bath_count = empty((256,), dtype=np.int32)
+    cdef int[::1] bath_count_theta = empty((256,), dtype=np.int32)
 
     c_params.D = params.D
     c_params.rot_eps = params.epsilon
@@ -59,6 +63,7 @@ def srk_with_probe(double[:, ::1] x0, double[::1] probe_x0, params):
 
     c_srk_with_probe(&x0[0,0], &probe_x0[0], &c_params,
                      &dt, &nloop, &nsteps, &nskip, &nstride,
-                     &data[0,0,0], &probe_data[0,0], &dim, &n_bath, &force[0], &force_count[0], &bath_count[0], &seed)
+                     &data[0,0,0], &probe_data[0,0], &dim, &n_bath, &force[0], &force_theta[0],
+		     &force_count[0], &bath_count[0], &bath_count_theta[0], &seed)
 
-    return np.asarray(data), np.asarray(probe_data), np.asarray(force), np.asarray(force_count), np.asarray(bath_count)
+    return np.asarray(data), np.asarray(probe_data), np.asarray(force), np.asarray(force_theta), np.asarray(force_count), np.asarray(bath_count), np.asarray(bath_count_theta)
