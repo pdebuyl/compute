@@ -8,7 +8,7 @@ plt.rcParams['axes.labelsize'] = 'large'
 plt.rcParams['figure.subplot.left'] = 0.15
 plt.rcParams['figure.subplot.bottom'] = 0.15
 
-N = 10
+N = 32
 
 angles = np.random.random_sample(N)*2*pi
 
@@ -22,7 +22,9 @@ def x_y_from_angles(angles):
     bonds[:,0] = np.cos(angles)
     bonds[:,1] = np.sin(angles)
     x = np.concatenate(((0,),np.cumsum(np.cos(angles))))
+    x -= x.mean()
     y = np.concatenate(((0,),np.cumsum(np.sin(angles))))
+    y -= y.mean()
     return x,y
 
 artists = []
