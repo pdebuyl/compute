@@ -239,8 +239,8 @@ contains
 
           ! Binning force data
           radius = sqrt(sum(probe_x**2))
-          if ( radius < params%wall_sigma ) then
-             idx = floor(radius*nbins/params%wall_sigma) + 1
+          if ( radius < params%probe_wall_sigma ) then
+             idx = floor(radius*nbins/params%probe_wall_sigma) + 1
              force_count(idx) = force_count(idx) + 1
              tmp = 0
              do j = 1, n_bath
@@ -254,8 +254,8 @@ contains
           theta_probe = atan2(probe_x(2), probe_x(1))
           do j = 1, n_bath
              radius = sqrt(sum(x(:,j)**2))
-             if ( radius < params%wall_sigma ) then
-                idx = floor(radius*nbins/params%wall_sigma) + 1
+             if ( radius < params%probe_wall_sigma ) then
+                idx = floor(radius*nbins/params%probe_wall_sigma) + 1
                 bath_count(idx) = bath_count(idx) + 1
                 theta_bath = modulo(atan2(x(2,j), x(1,j)) - theta_probe, 2*pi)
                 theta_idx = floor(theta_bath*nbins/(2*pi)) + 1
