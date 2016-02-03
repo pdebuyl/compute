@@ -67,7 +67,9 @@ a['force_theta'] = np.array(force_theta_data).sum(axis=0)
 a['force_count'] = np.array(force_count_data).sum(axis=0)
 a['bath_count'] = np.array(bath_count_data).sum(axis=0)
 a['bath_count_theta'] = np.array(bath_count_theta_data).sum(axis=0)
+t1 = time.time() - t0
+a['simulation_time'] = t1
 
 a.close()
 
-print 'simulation %s done - %7.1f s' % (args.ID, time.time() - t0)
+print 'simulation %s done - %7.1f s' % (args.ID, t1)
