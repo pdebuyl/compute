@@ -79,7 +79,7 @@ def rotate_y(x, theta):
 
 
 def align_to_z(r, v):
-    theta = np.arctan(v[1]/v[0])
+    theta = np.arctan2(v[1], v[0])
     for i in range(r.shape[0]):
         r[i, :] = rotate_z(r[i, :], -theta)
     v = rotate_z(v, -theta)
@@ -109,18 +109,24 @@ def cut_in_half(r):
     hemispheres of the sphere. Assumes that the particles are centered around
     the origin."""
     assert np.allclose(r.mean(axis=0), np.zeros(r.shape[1]))
-    th = np.random.rand(1)[0]*np.pi*2.
-    phi = np.random.rand(1)[0]*np.pi
-    v = np.array([np.cos(th)*np.sin(phi), np.sin(th)*np.sin(phi), np.cos(phi)])
-    sign = np.sum(r*v.reshape((1, 3)), axis=1)
-    up = sign > 0
-    r_up = r[up]
-    r_down = r[~up]
-    r = np.concatenate((r_down, r_up))
-    species = np.zeros(r.shape[0])
-    species[:] = 1
-    species[-np.sum(up):] = 2
-    return r, species, v
+    n = r.shape[0]
+    is_odd = not n%2==0
+    while True:
+        i = np.random.randint(n)
+        v = r[i] / np.sqrt(np.sum(r[i]**2))
+        sign = np.sum(r*v.reshape((1, 3)), axis=1)
+        up = sign > 0
+        r_up = r[up]
+        r_down = r[~up]
+        if len(r_up) == n//2 or (is_odd and len(r_up) == n//2+1):
+            break
+    new_index = np.searchsorted(np.arange(n)[up], i)
+    assert np.allclose(r[i], r_up[new_index])
+    r = np.concatenate((r_up, r_down))
+    species = np.zeros(n)
+    species[:] = 2
+    species[:np.sum(up)] = 1
+    return r, species, new_index
 
 # read
 # select clusters
@@ -159,8 +165,8 @@ if __name__ == '__main__':
             step += 1
 
     for i, r in enumerate(configurations):
-        r, species, v = cut_in_half(r)
-        r = align_to_z(r, v)
+        r, species, idx = cut_in_half(r.copy())
+        r = align_to_z(r, r[idx].copy())
         filename = '%s_janus_%03i.h5' % (args.file[:-3], i+1)
         write_configuration(r, species, filename, args.sigma, args.treshold)
         print('Wrote', filename)
