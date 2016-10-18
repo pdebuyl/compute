@@ -16,6 +16,8 @@ def parse_args(args=None):
     parser.add_argument('--sigma', type=float, required=True,
                         help='radius of the individual colloids')
     parser.add_argument('--rho', type=float, help='mass density', default=10)
+    parser.add_argument('--scale', type=float,
+                        help='scale for the final coordinates', default=1)
     parser.add_argument('--treshold', type=float,
                         help='maximum distance to center', required=True)
     parser.add_argument('--group', type=str, default='colloids',
@@ -111,15 +113,24 @@ def cut_in_half(r):
     assert np.allclose(r.mean(axis=0), np.zeros(r.shape[1]))
     n = r.shape[0]
     is_odd = not n%2==0
-    while True:
-        i = np.random.randint(n)
+    weigth = np.inf
+    keep_up = None
+    for i in range(n):
         v = r[i] / np.sqrt(np.sum(r[i]**2))
         sign = np.sum(r*v.reshape((1, 3)), axis=1)
         up = sign > 0
         r_up = r[up]
         r_down = r[~up]
         if len(r_up) == n//2 or (is_odd and len(r_up) == n//2+1):
-            break
+            new_weigth = np.sum(sign**2)
+            if new_weigth < weigth:
+                keep_i = i
+                weigth = new_weigth
+                keep_up = up.copy()
+                print(args.file, weigth)
+    i, up = keep_i, keep_up
+    r_up = r[up]
+    r_down = r[~up]
     new_index = np.searchsorted(np.arange(n)[up], i)
     assert np.allclose(r[i], r_up[new_index])
     r = np.concatenate((r_up, r_down))
@@ -142,7 +153,7 @@ if __name__ == '__main__':
         edges = colloids['box/edges'][:]
         n_colloids = all_r.value.shape[1]
         mass_bead = args.rho * 4/3*np.pi*args.sigma**3
-        I_target = n_colloids * mass_bead * 2/5 * (args.treshold-1)**2
+        I_target = n_colloids * mass_bead * 2/5 * args.treshold**2
         step = 0
         configurations = []
         for r in all_r.value:
@@ -166,7 +177,14 @@ if __name__ == '__main__':
 
     for i, r in enumerate(configurations):
         r, species, idx = cut_in_half(r.copy())
-        r = align_to_z(r, r[idx].copy())
-        filename = '%s_janus_%03i.h5' % (args.file[:-3], i+1)
-        write_configuration(r, species, filename, args.sigma, args.treshold)
+        r = align_to_z(r, r[idx].copy())*args.scale
+        I, gyr = inertia_gyr(r, mass_bead)
+        print('I = ', I)
+        transform(r, I[2])
+        I_trans, gyr_trans = inertia_gyr(r, mass_bead)
+        r *= np.sqrt(I_target / I_trans[2])
+        Ip, gyrp = inertia_gyr(r, mass_bead)
+        print('Ip = ', Ip)
+        filename = '%s_janus_b_%03i.h5' % (args.file[:-3], i+1)
+        write_configuration(r, species, filename, args.sigma*args.scale, args.treshold*args.scale)
         print('Wrote', filename)
