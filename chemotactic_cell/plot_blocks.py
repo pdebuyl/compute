@@ -138,7 +138,7 @@ if do_w:
     popt, pcov = curve_fit(_fitfunc, wacf_t, wacf_all.mean(axis=0), sigma=np.sqrt(wacf_t))
     gamma = I/popt[1]
     plt.plot(wacf_t, _fitfunc(wacf_t, *popt))
-    print('wacf %5.3e' % (T/gamma))
+    print('wacf exponential fit: D=%5.3e' % (T/gamma))
     plt.xscale('log')
     plt.subplot(212)
     plt.ylabel(r"$\int_0^\tau \langle \dot\phi(\tau') \dot\phi(0) \rangle d\tau'$")
@@ -158,7 +158,7 @@ plt.plot(oacf_t, m, marker='o')
 popt, pcov = curve_fit(_fitfunc, oacf_t, m, sigma=np.sqrt(oacf_t))
 plt.plot(oacf_t, _fitfunc(oacf_t, *popt), 'k-')
 plt.xscale('log')
-print('oacf %5.3e' % (1/popt[1]))
+print('oacf exponential fit: D=%5.3e' % (1/popt[1]))
 plt.plot(r12_tau*np.arange(r12_all.shape[1]), r12_all.mean(axis=0), 'k--')
 
 plt.subplot(212, sharex=ax1)
@@ -168,7 +168,7 @@ plt.plot(oacf_t, m, marker='o')
 popt, pcov = curve_fit(_fitfunc, oacf_t, m, sigma=np.sqrt(oacf_t))
 plt.plot(oacf_t, _fitfunc(oacf_t, *popt), 'k-')
 plt.plot(r12_tau*np.arange(r12_all.shape[1]), r12_all.mean(axis=0), 'k--')
-print('oacf %5.3e' % (1/popt[1]))
+print('oacf 2D exponential fit: D=%5.3e' % (1/popt[1]))
 
 plt.xlabel(r'$\tau$')
 
