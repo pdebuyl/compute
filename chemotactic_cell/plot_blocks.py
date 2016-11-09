@@ -14,6 +14,11 @@ from scipy.signal import fftconvolve
 from scipy.optimize import leastsq, curve_fit
 from scipy.integrate import simps, cumtrapz
 
+plt.rcParams['figure.figsize'] = (10, 8)
+plt.rcParams['figure.subplot.hspace'] = 0.25
+plt.rcParams['figure.subplot.left'] = 0.17
+plt.rcParams['axes.labelsize'] = 16
+
 def fitfunc(p, t):
     return p[0]*np.exp(-p[1]*t)
 
@@ -114,15 +119,19 @@ if do_w:
     omega_all = np.array(omega_all)
 
 ax1 = plt.subplot(211)
+plt.ylabel(r'$\langle \mathbf{v}(\tau)\cdot\mathbf{v}(0) \rangle$')
 plt.plot(vacf_t, vacf_all.mean(axis=0), marker='o')
 plt.xscale('log')
 ax2 = plt.subplot(212)
+plt.ylabel(r'$\langle (\mathbf{r}(\tau) - \mathbf{r}(0))^2 \rangle$')
 plt.plot(msd_t, msd_all.mean(axis=0), marker='o')
+plt.xlabel(r'$\tau$')
 plt.loglog()
 
 if do_w:
     plt.figure()
     plt.subplot(211)
+    plt.ylabel(r'$\langle \dot\phi(\tau) \dot\phi(0) \rangle$')
     t = omega_tau*np.arange(omega_all.shape[1])
     plt.plot(t, omega_all.mean(axis=0))
     plt.plot(wacf_t, wacf_all.mean(axis=0))
@@ -132,16 +141,18 @@ if do_w:
     print('wacf %5.3e' % (T/gamma))
     plt.xscale('log')
     plt.subplot(212)
+    plt.ylabel(r"$\int_0^\tau \langle \dot\phi(\tau') \dot\phi(0) \rangle d\tau'$")
     plt.plot(t, cumtrapz(omega_all.mean(axis=0), t, initial=0))
     plt.plot(t, cumtrapz(omega_all.mean(axis=0), t, initial=0))
     plt.plot(wacf_t, cumtrapz(wacf_all.mean(axis=0), wacf_t, initial=0), marker='o')
     plt.xscale('log')
+    plt.xlabel(r'$\tau$')
 
     print('wacf[0] %5.3e' % (wacf_all[:,0].mean(axis=0)*I))
 
 plt.figure()
 ax1 = plt.subplot(211)
-plt.title('oacf')
+plt.ylabel(r'$\langle \hat \mathbf{u}(\tau) \cdot \hat \mathbf{u}(0) \rangle$')
 m = oacf_all.sum(axis=-1).mean(axis=0)
 plt.plot(oacf_t, m, marker='o')
 popt, pcov = curve_fit(_fitfunc, oacf_t, m, sigma=np.sqrt(oacf_t))
@@ -151,11 +162,14 @@ print('oacf %5.3e' % (1/popt[1]))
 plt.plot(r12_tau*np.arange(r12_all.shape[1]), r12_all.mean(axis=0), 'k--')
 
 plt.subplot(212, sharex=ax1)
+plt.ylabel(r'$\langle \hat \mathbf{u}(\tau) \cdot \hat \mathbf{u}(0) \rangle$ (2D)')
 m = oacf_all[...,0:2].sum(axis=-1).mean(axis=0)
 plt.plot(oacf_t, m, marker='o')
 popt, pcov = curve_fit(_fitfunc, oacf_t, m, sigma=np.sqrt(oacf_t))
 plt.plot(oacf_t, _fitfunc(oacf_t, *popt), 'k-')
 plt.plot(r12_tau*np.arange(r12_all.shape[1]), r12_all.mean(axis=0), 'k--')
 print('oacf %5.3e' % (1/popt[1]))
+
+plt.xlabel(r'$\tau$')
 
 plt.show()
