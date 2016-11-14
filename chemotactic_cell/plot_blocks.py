@@ -50,6 +50,8 @@ T=1/3
 
 msd_all = []
 vacf_all = []
+tvacf_all = []
+pvacf_all = []
 oacf_all = []
 wacf_all = []
 omega_all = []
@@ -106,12 +108,32 @@ for f in args.file:
         omega_acf = fftconvolve(omega, omega[::-1])[len(omega)-1:] / (len(omega) - np.arange(len(omega)))
         omega_all.append(omega_acf)
 
+    do_pvacf = 'parallel_velocity_autocorrelation' in a['block_correlators']
+    if do_pvacf:
+        pvacf = a['block_correlators/parallel_velocity_autocorrelation/value'][:]
+        pvacf_count = a['block_correlators/parallel_velocity_autocorrelation/count'][:]
+        pvacf /= pvacf_count.reshape((-1, 1, 1, 1))
+        pvacf_tau = a['block_correlators/parallel_velocity_autocorrelation/time'][()]
+        pvacf_t, pvacf_data = get_block_data(pvacf, pvacf_tau)
+        pvacf_all.append(pvacf_data)
+
+    do_tvacf = 'transverse_velocity_autocorrelation' in a['block_correlators']
+    if do_tvacf:
+        tvacf = a['block_correlators/transverse_velocity_autocorrelation/value'][:]
+        tvacf_count = a['block_correlators/transverse_velocity_autocorrelation/count'][:]
+        tvacf /= tvacf_count.reshape((-1, 1, 1, 1))
+        tvacf_tau = a['block_correlators/transverse_velocity_autocorrelation/time'][()]
+        tvacf_t, tvacf_data = get_block_data(tvacf, tvacf_tau)
+        tvacf_all.append(tvacf_data)
+
     a.close()
 
 do_w = len(wacf_all)>0 and len(omega_all)>0
 
 msd_all = np.array(msd_all)
 vacf_all = np.array(vacf_all)
+pvacf_all = np.array(pvacf_all)
+tvacf_all = np.array(tvacf_all)
 oacf_all = np.array(oacf_all)
 r12_all = np.array(r12_all)
 if do_w:
@@ -127,6 +149,22 @@ plt.ylabel(r'$\langle (\mathbf{r}(\tau) - \mathbf{r}(0))^2 \rangle$')
 plt.plot(msd_t, msd_all.mean(axis=0), marker='o')
 plt.xlabel(r'$\tau$')
 plt.loglog()
+
+plt.figure()
+ax1 = plt.subplot(211)
+plt.ylabel(r'tvacf')
+m = tvacf_all.sum(axis=-1).mean(axis=0)
+plt.plot(tvacf_t, m, marker='o')
+plt.plot(tvacf_t, cumtrapz(m, tvacf_t, initial=0))
+plt.xscale('log')
+
+ax2 = plt.subplot(212, sharex=ax1)
+plt.ylabel(r'pvacf')
+m = pvacf_all.sum(axis=-1).mean(axis=0)
+plt.plot(pvacf_t, m, marker='o')
+plt.plot(pvacf_t, cumtrapz(m, pvacf_t, initial=0))
+plt.xscale('log')
+
 plt.figure()
 ax1 = plt.subplot(211)
 plt.ylabel(r'$\langle \hat \mathbf{u}(\tau) \cdot \hat \mathbf{u}(0) \rangle$')
