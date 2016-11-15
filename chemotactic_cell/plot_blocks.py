@@ -28,9 +28,13 @@ def _fitfunc(t, f0, tau):
 def errfunc(p, t, y):
     return fitfunc(p, t) - y
 
-def get_block_data(block, dt, dim=3):
+def get_block_data(group, name, dim=3):
     t_data = []
     data = []
+    block = group[name]['value'][:]
+    count = group[name]['count'][:]
+    block /= count.reshape((-1, 1, 1, 1))
+    dt = group[name]['time'][()]
     for i in range(block.shape[0]):
         t = dt*np.arange(block.shape[1])*block.shape[1]**i
         t_data.append(t[1:])
@@ -59,26 +63,15 @@ r12_all = []
 
 for f in args.file:
     a = h5py.File(f, 'r')
+    group = a['block_correlators']
 
-    msd = a['block_correlators/mean_square_displacement/value'][:]
-    msd_count = a['block_correlators/mean_square_displacement/count'][:]
-    msd /= msd_count.reshape((-1, 1, 1, 1))
-    msd_tau = a['block_correlators/mean_square_displacement/time'][()]
-    msd_t, msd_data = get_block_data(msd, msd_tau)
+    msd_t, msd_data = get_block_data(group, 'mean_square_displacement')
     msd_all.append(msd_data)
 
-    vacf = a['block_correlators/velocity_autocorrelation/value'][:]
-    vacf_count = a['block_correlators/velocity_autocorrelation/count'][:]
-    vacf /= vacf_count.reshape((-1, 1, 1, 1))
-    vacf_tau = a['block_correlators/velocity_autocorrelation/time'][()]
-    vacf_t, vacf_data = get_block_data(vacf, vacf_tau)
+    vacf_t, vacf_data = get_block_data(group, 'velocity_autocorrelation')
     vacf_all.append(vacf_data)
 
-    oacf = a['block_correlators/orientation_autocorrelation/value'][:]
-    oacf_count = a['block_correlators/orientation_autocorrelation/count'][:]
-    oacf /= oacf_count.reshape((-1, 1, 1, 1))
-    oacf_tau = a['block_correlators/orientation_autocorrelation/time'][()]
-    oacf_t, oacf_data = get_block_data(oacf, oacf_tau)
+    oacf_t, oacf_data = get_block_data(group, 'orientation_autocorrelation')
     oacf_all.append(oacf_data)
 
     edges = a['/particles/dimer/box/edges'][:2].reshape((1,1,2))
@@ -93,12 +86,8 @@ for f in args.file:
         #fftconvolve(r12[:,2], r12[::-1,2])[len(r12)-1:] / (len(r12) - np.arange(len(r12))) )
     r12_all.append(r12_acf)
 
-    if 'planar_angular_velocity_autocorrelation' in a['block_correlators']:
-        wacf = a['block_correlators/planar_angular_velocity_autocorrelation/value'][:]
-        wacf_count = a['block_correlators/planar_angular_velocity_autocorrelation/count'][:]
-        wacf /= wacf_count.reshape((-1, 1, 1, 1))
-        wacf_tau = a['block_correlators/planar_angular_velocity_autocorrelation/time'][()]
-        wacf_t, w_data = get_block_data(wacf, wacf_tau, dim=1)
+    if 'planar_angular_velocity_autocorrelation' in group:
+        wacf_t, w_data = get_block_data(group, 'planar_angular_velocity_autocorrelation', dim=1)
         wacf_all.append(w_data.flatten())
 
     if 'omega' in a['observables']:
@@ -108,22 +97,14 @@ for f in args.file:
         omega_acf = fftconvolve(omega, omega[::-1])[len(omega)-1:] / (len(omega) - np.arange(len(omega)))
         omega_all.append(omega_acf)
 
-    do_pvacf = 'parallel_velocity_autocorrelation' in a['block_correlators']
+    do_pvacf = 'parallel_velocity_autocorrelation' in group
     if do_pvacf:
-        pvacf = a['block_correlators/parallel_velocity_autocorrelation/value'][:]
-        pvacf_count = a['block_correlators/parallel_velocity_autocorrelation/count'][:]
-        pvacf /= pvacf_count.reshape((-1, 1, 1, 1))
-        pvacf_tau = a['block_correlators/parallel_velocity_autocorrelation/time'][()]
-        pvacf_t, pvacf_data = get_block_data(pvacf, pvacf_tau)
+        pvacf_t, pvacf_data = get_block_data(group, 'parallel_velocity_autocorrelation')
         pvacf_all.append(pvacf_data)
 
-    do_tvacf = 'transverse_velocity_autocorrelation' in a['block_correlators']
+    do_tvacf = 'transverse_velocity_autocorrelation' in group
     if do_tvacf:
-        tvacf = a['block_correlators/transverse_velocity_autocorrelation/value'][:]
-        tvacf_count = a['block_correlators/transverse_velocity_autocorrelation/count'][:]
-        tvacf /= tvacf_count.reshape((-1, 1, 1, 1))
-        tvacf_tau = a['block_correlators/transverse_velocity_autocorrelation/time'][()]
-        tvacf_t, tvacf_data = get_block_data(tvacf, tvacf_tau)
+        tvacf_t, tvacf_data = get_block_data(group, 'transverse_velocity_autocorrelation')
         tvacf_all.append(tvacf_data)
 
     a.close()
