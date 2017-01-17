@@ -12,7 +12,7 @@ parser.add_argument('--n-steps', type=int, default=1000,
                     help='Number of timesteps')
 parser.add_argument('--n-inner-steps', type=int, default=50,
                     help='Number of inner loop steps')
-parser.add_argument('-C-force', action='store_true',
+parser.add_argument('--C-force', action='store_true',
                     help='Turn on sensitivity of C bead')
 parser.add_argument('--Lambda_NM', type=float, default=0.421,
                     help='Interaction parameter')
