@@ -209,4 +209,4 @@ def run_cg_nm(phi_0=0, int N_steps=1000, int N_MD=100, C_force=False, double Lam
         dimer_data[t,5] = F_com.x/dt
         dimer_data[t,6] = F_com.y/dt
 
-    return np.asarray(dimer_data)
+    return np.asarray(dimer_data[:,:2]), np.asarray(dimer_data[:,2]), np.asarray(dimer_data[:,5:])
