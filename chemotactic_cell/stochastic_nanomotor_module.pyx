@@ -96,10 +96,10 @@ cdef double cg_polar_c_B(double theta, double varphi, double r, double x, double
 cdef double wall_force(double y):
     cdef double fy
     cdef double k_wall = 10
-    if y<0:
-        fy = -k_wall*y
-    elif y>LY:
-        fy = k_wall*(LY-y)
+    if y<2:
+        fy = -k_wall*(y-2)
+    elif y>LY-2:
+        fy = k_wall*(LY-y-2)
     else:
         fy = 0
     return fy
