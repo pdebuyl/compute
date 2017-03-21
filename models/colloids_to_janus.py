@@ -28,6 +28,7 @@ import pyh5md
 import numpy as np
 import itertools
 import os.path
+from transforms3d import quaternions
 
 
 def center_cluster(r, edges):
@@ -60,6 +61,14 @@ def inertia_gyr(r, mass_bead):
         I[2] += pos[0]**2 + pos[1]**2
     return I*mass_bead, gyr
 
+def full_inertia(r, mass_bead):
+    I = np.zeros((3,3))
+    I[0,0], I[1,1], I[2,2] = -np.sum(r**2, axis=0)
+    for part in range(r.shape[0]):
+        pos = r[part, :]
+        I += np.outer(pos, pos)
+    return I*mass_bead
+
 
 def transform(r, target_Iz):
     x, y, z = np.sum(r**2, axis=0)
@@ -91,6 +100,36 @@ def align_to_z(r, v):
     v = rotate_y(v, np.pi/2-phi)
     return r
 
+def inertia_tensor(r):
+    r = np.asarray(r)
+    res = np.zeros((3,3))
+    for i in range(r.shape[0]):
+        res += np.eye(3)*np.sum(r[i]**2)
+        res -= np.outer(r[i], r[i])
+
+    return res
+
+def align_axis(r, idx):
+    r = np.asarray(r)
+    I = inertia_tensor(r)
+    e_val, e_vec = np.linalg.eig(I)
+    e_z = e_vec[:,idx]
+    one_z = np.zeros(3)
+    one_z[idx] = 1
+    vec = np.cross(e_z, one_z)
+    vec = vec/np.sqrt(np.dot(vec, vec))
+    theta = np.arccos(np.dot(e_z, one_z))
+    q = np.array([np.cos(theta/2), *np.sin(theta/2)*vec])
+    for i in range(r.shape[0]):
+        r[i] = quaternions.rotate_vector(r[i], q)
+    return r
+
+def balance_diagonal(r):
+    x, y, z = inertia_tensor(r).diagonal()
+    r[:,0] /= np.sqrt((y+z-x))
+    r[:,1] /= np.sqrt((x+z-y))
+    r[:,2] /= np.sqrt((x+y-z))
+    return r
 
 def write_configuration(r, species, filename, sigma, treshold):
     kwargs = {'author': 'Pierre de Buyl',
@@ -102,6 +141,7 @@ def write_configuration(r, species, filename, sigma, treshold):
         cluster.create_box(dimension=3, boundary=['periodic']*3,
                            store='fixed', data=edges)
         pos = pyh5md.element(cluster, 'position', store='fixed', data=r)
+        pos.attrs['head'] = 0
         pyh5md.element(cluster, 'box/edges', store='fixed', data=edges)
         pyh5md.element(cluster, 'species', store='fixed', data=species)
 
@@ -138,6 +178,15 @@ def cut_in_half(r):
     species[:] = 2
     species[:np.sum(up)] = 1
     return r, species, new_index
+
+def cut_along_xyz(r):
+    assert np.allclose(r.mean(axis=0), np.zeros(r.shape[1]))
+    n_up = np.sum(r>0, axis=0)
+    n_down = np.sum(r<0, axis=0)
+    return np.equal(n_up, n_down)
+
+def change_axis(r, new_z):
+    return r[:,np.roll(np.arange(3), 2-new_z)]
 
 # read
 # select clusters
@@ -176,15 +225,15 @@ if __name__ == '__main__':
             step += 1
 
     for i, r in enumerate(configurations):
-        r, species, idx = cut_in_half(r.copy())
-        r = align_to_z(r, r[idx].copy())*args.scale
-        I, gyr = inertia_gyr(r, mass_bead)
-        print('I = ', I)
-        transform(r, I[2])
-        I_trans, gyr_trans = inertia_gyr(r, mass_bead)
-        r *= np.sqrt(I_target / I_trans[2])
-        Ip, gyrp = inertia_gyr(r, mass_bead)
-        print('Ip = ', Ip)
-        filename = '%s_janus_b_%03i.h5' % (args.file[:-3], i+1)
-        write_configuration(r, species, filename, args.sigma*args.scale, args.treshold*args.scale)
-        print('Wrote', filename)
+        r = balance_diagonal(align_axis(align_axis(r, 0), 1))
+        r *= np.sqrt(I_target/mass_bead)
+        print('full I', mass_bead*inertia_tensor(r))
+        cut = cut_along_xyz(r)
+        if np.any(cut):
+            axis = np.argwhere(cut)[0]
+            r = change_axis(r, axis)
+            species = np.ones(r.shape[0])
+            species[r[:,2]<0] = 2
+            filename = '%s_janus_b_%03i.h5' % (args.file[:-3], i+1)
+            write_configuration(r, species, filename, args.sigma*args.scale, args.treshold*args.scale)
+            print('Wrote', filename)
