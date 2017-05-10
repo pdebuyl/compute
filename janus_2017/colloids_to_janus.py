@@ -102,7 +102,7 @@ def balance_diagonal(r):
     return r
 
 
-def write_configuration(r, species, filename, sigma, treshold):
+def write_configuration(r, species, filename, sigma, treshold, attrs=None):
     kwargs = {'author': 'Pierre de Buyl',
               'creator': os.path.basename(__file__)}
     with pyh5md.File(filename, mode='w', **kwargs) as b:
@@ -112,9 +112,11 @@ def write_configuration(r, species, filename, sigma, treshold):
         cluster.create_box(dimension=3, boundary=['periodic']*3,
                            store='fixed', data=edges)
         pos = pyh5md.element(cluster, 'position', store='fixed', data=r)
-        pos.attrs['head'] = 0
         pyh5md.element(cluster, 'box/edges', store='fixed', data=edges)
         pyh5md.element(cluster, 'species', store='fixed', data=species)
+        if attrs is not None:
+            for k, v in attrs.items():
+                pos.attrs[k] = v
 
 
 def cut_along_xyz(r):
@@ -174,7 +176,16 @@ if __name__ == '__main__':
             r = change_axis(r, axis)
             species = np.ones(r.shape[0])
             species[r[:,2]<0] = 2
+            print('C com', r[species==1,:].mean(axis=0))
+            print('N com', r[species==2,:].mean(axis=0))
+            x1, y1, z1 = r[0]
+            x2, y2, z2 = r[1]
+            x3, y3, z3 = r[2]
+            alpha = (x3*y1 - x1*y3) / (x2*y3 - x3*y2)
+            beta = -(y1+alpha*y2)/y3
+            u_r = r[0]+alpha*r[1]+beta*r[2]
             filename = '%s_janus_b_%03i.h5' % (args.file[:-3], i+1)
+            attrs = {'alpha': alpha, 'beta': beta, 'z0': u_r[2]}
             write_configuration(r, species, filename, args.sigma*args.scale,
-                                args.treshold*args.scale)
+                                args.treshold*args.scale, attrs=attrs)
             print('Wrote', filename)
