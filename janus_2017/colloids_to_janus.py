@@ -21,8 +21,8 @@ def parse_args(args=None):
     parser.add_argument('--sigma', type=float, required=True,
                         help='radius of the individual colloids')
     parser.add_argument('--rho', type=float, help='mass density', default=10)
-    parser.add_argument('--scale', type=float,
-                        help='scale for the final coordinates', default=1)
+    parser.add_argument('--scale', default='1',
+                        help='scale for the final coordinates')
     parser.add_argument('--treshold', type=float,
                         help='maximum distance to center', required=True)
     parser.add_argument('--group', type=str, default='colloids',
@@ -129,6 +129,14 @@ def cut_along_xyz(r):
 def change_axis(r, new_z):
     return r[:,np.roll(np.arange(3), 2-new_z)]
 
+def get_scale(s):
+    split = s.split('/')
+    if len(split)==1:
+        return float(split[0])
+    elif len(split)==2:
+        return float(split[0])/float(split[1])
+    else:
+        raise ValueError("Bad value for scale")
 
 # read
 # select clusters
@@ -186,6 +194,7 @@ if __name__ == '__main__':
             u_r = r[0]+alpha*r[1]+beta*r[2]
             filename = '%s_janus_b_%03i.h5' % (args.file[:-3], i+1)
             attrs = {'alpha': alpha, 'beta': beta, 'z0': u_r[2]}
-            write_configuration(r, species, filename, args.sigma*args.scale,
-                                args.treshold*args.scale, attrs=attrs)
+            scale = get_scale(args.scale)
+            write_configuration(r*scale, species, filename, args.sigma*scale,
+                                args.treshold*scale, attrs=attrs)
             print('Wrote', filename)
