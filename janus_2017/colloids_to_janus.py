@@ -54,17 +54,6 @@ def center_cluster(r, edges):
     return r
 
 
-def inertia_gyr(r, mass_bead):
-    I = np.zeros(3)
-    gyr = np.mean(r**2)*mass_bead
-    for part in range(r.shape[0]):
-        pos = r[part, :]
-        I[0] += pos[1]**2 + pos[2]**2
-        I[1] += pos[2]**2 + pos[0]**2
-        I[2] += pos[0]**2 + pos[1]**2
-    return I*mass_bead, gyr
-
-
 def transform(r, target_Iz):
     x, y, z = np.sum(r**2, axis=0)
     for part in range(r.shape[0]):
@@ -173,13 +162,13 @@ if __name__ == '__main__':
         configurations = []
         for r in all_r.value:
             r = center_cluster(r, edges)
-            I, gyr = inertia_gyr(r, mass_bead)
+            I = mass_bead*inertia_tensor(r).diagonal()
             ratio = np.std(I)/np.mean(I)
             radius = np.sqrt(np.sum(r**2, axis=1))
             transform(r, I[2])
-            I_trans, gyr_trans = inertia_gyr(r, mass_bead)
+            I_trans = mass_bead*inertia_tensor(r).diagonal()
             r *= np.sqrt(I_target / I_trans[2])
-            Ip, gyrp = inertia_gyr(r, mass_bead)
+            Ip = mass_bead*inertia_tensor(r).diagonal()
             count, bins = np.histogram(radius, bins=np.linspace(0, 10, 11))
             if radius.max() < args.treshold:
                 print(args.file, 'step', step)
