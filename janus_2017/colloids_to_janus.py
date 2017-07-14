@@ -54,7 +54,11 @@ def center_cluster(r, edges):
     return r
 
 
-def transform(r, target_Iz):
+def transform(r):
+    """
+    Equalize the components of the inertia tensor for a c.o.m. centered and
+    aligned set of positions.
+    """
     x, y, z = np.sum(r**2, axis=0)
     for part in range(r.shape[0]):
         r[part, 0] *= np.sqrt(z/x)
@@ -123,6 +127,12 @@ def write_configuration(r, species, filename, sigma, treshold, attrs=None):
 
 
 def cut_along_xyz(r):
+    """
+    Test if the c.o.m. centered and aligned set of positions can be cut in x, y
+    or z with an equal number of particles on each side.
+
+    Returns a boolean array for the possible cut along the three directions.
+    """
     assert np.allclose(r.mean(axis=0), np.zeros(r.shape[1]))
     n_up = np.sum(r>0, axis=0)
     n_down = np.sum(r<0, axis=0)
@@ -130,10 +140,18 @@ def cut_along_xyz(r):
 
 
 def change_axis(r, new_z):
+    """
+    Cycle the x, y and z coordinates to obtain alignment of axis `new_z` to the
+    z direction.
+    """
     return r[:,np.roll(np.arange(3), 2-new_z)]
 
 
 def get_scale(s):
+    """
+    Helper function that returns float(s0)/float(s1) for a slash separated
+    string 's0/s1' or simply float(s) for other strings.
+    """
     split = s.split('/')
     if len(split)==1:
         return float(split[0])
@@ -165,7 +183,7 @@ if __name__ == '__main__':
             I = mass_bead*inertia_tensor(r).diagonal()
             ratio = np.std(I)/np.mean(I)
             radius = np.sqrt(np.sum(r**2, axis=1))
-            transform(r, I[2])
+            transform(r)
             I_trans = mass_bead*inertia_tensor(r).diagonal()
             r *= np.sqrt(I_target / I_trans[2])
             Ip = mass_bead*inertia_tensor(r).diagonal()
