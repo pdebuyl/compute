@@ -31,6 +31,10 @@ def parse_args(args=None):
 
 
 def center_cluster(r, edges):
+    """
+    Move the center of mass of the set of positions r to zero. The combination
+    of shifts that generates the smallest average for r**2 is kept.
+    """
     n = r.shape[0]
     s_min = n*np.sum(edges**2)
     nx, ny, nz = map(lambda x: int(x)//2, edges)
@@ -69,6 +73,9 @@ def transform(r, target_Iz):
 
 
 def inertia_tensor(r):
+    """
+    Return the inertia tensor of the c.o.m. centered positions r.
+    """
     r = np.asarray(r)
     res = np.zeros((3,3))
     for i in range(r.shape[0]):
@@ -79,6 +86,9 @@ def inertia_tensor(r):
 
 
 def align_axis(r, idx):
+    """
+    Align the c.o.m. centered set of positions to its principal axes.
+    """
     r = np.asarray(r)
     I = inertia_tensor(r)
     e_val, e_vec = np.linalg.eig(I)
@@ -95,6 +105,10 @@ def align_axis(r, idx):
 
 
 def balance_diagonal(r):
+    """
+    Equalize the magnitudes of the c.o.m. centered and aligned set of
+    positions.
+    """
     x, y, z = inertia_tensor(r).diagonal()
     r[:,0] /= np.sqrt((y+z-x))
     r[:,1] /= np.sqrt((x+z-y))
