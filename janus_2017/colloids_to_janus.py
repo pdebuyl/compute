@@ -129,6 +129,7 @@ def cut_along_xyz(r):
 def change_axis(r, new_z):
     return r[:,np.roll(np.arange(3), 2-new_z)]
 
+
 def get_scale(s):
     split = s.split('/')
     if len(split)==1:
@@ -141,6 +142,7 @@ def get_scale(s):
 # read
 # select clusters
 # align to z
+
 
 if __name__ == '__main__':
     args = parse_args()
