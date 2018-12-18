@@ -13,12 +13,12 @@ program example_bitmasks
 
   mask = ior(MASK_00, MASK_02)
 
-  write(*,*) 'Truth table of mask with the three bitmasks'
+  write(*,*) 'Truth table of mask=ior(MASK_00, MASK_02) with the three bitmasks'
   write(*,*) 'iand(mask, MASK_00) == MASK_00', iand(mask, MASK_00) == MASK_00
   write(*,*) 'btest(mask, BIT_00)', btest(mask, BIT_00)
-  write(*,*) 'iand(mask, MASK_00) == MASK_00', iand(mask, MASK_01) == MASK_01
+  write(*,*) 'iand(mask, MASK_01) == MASK_00', iand(mask, MASK_01) == MASK_01
   write(*,*) 'btest(mask, BIT_01)', btest(mask, BIT_01)
-  write(*,*) 'iand(mask, MASK_00) == MASK_00', iand(mask, MASK_02) == MASK_02
+  write(*,*) 'iand(mask, MASK_02) == MASK_00', iand(mask, MASK_02) == MASK_02
   write(*,*) 'btest(mask, BIT_02)', btest(mask, BIT_02)
 
 
