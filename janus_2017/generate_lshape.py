@@ -19,6 +19,10 @@ parser.add_argument('--ny', type=int, default=7,
                     help='number of beads along the long arm of the L')
 parser.add_argument('--n-tiles', type=int, default=2,
                     help='number of tiles for the thickness of the bottom arm')
+parser.add_argument('--arm-width', type=int, default=2,
+                    help='width of long arm')
+parser.add_argument('--thickness', type=int, default=2,
+                    help='thickness of the colloid')
 parser.add_argument('--out', help='H5MD output filename')
 args = parser.parse_args()
 
@@ -28,38 +32,42 @@ n_links_x = args.nx-1
 n_links_y = args.ny-1
 
 x = np.linspace(0, n_links_x*args.step, n_links_x+1)
-xl = args.n_tiles*list(x) + (n_links_y+1-args.n_tiles)*list(x[:2])
-xl = 2*xl
+xl = args.n_tiles*list(x) + (n_links_y+1-args.n_tiles)*list(x[:args.arm_width])
+planar_count = len(xl)
+xl = args.thickness*xl
+print('planar_count', planar_count)
 
 zl = []
 for i in range(n_links_y+1):
     if i < args.n_tiles:
         zl += (n_links_x+1)*[i*args.step]
     else:
-        zl += 2*[i*args.step]
+        zl += args.arm_width*[i*args.step]
 
-zl = 2*zl
+zl = args.thickness*zl
 
-yl = [0]*(len(xl)//2) + [args.step]*(len(xl)//2)
+yl = np.arange(args.thickness)[:,None] * np.ones(planar_count)*args.step
+yl = yl.reshape((-1,))
 
 r = np.zeros((len(xl), 3))
 
 r[:,0] = xl
-r[:,1] = yl
-r[:,2] = zl
+r[:,1] = zl
+r[:,2] = yl
 
 s = np.ones(len(xl), dtype=int)*2
-s[r[:,2]<args.step] = 1
+s[r[:,1]<args.step] = 1
 
 if __name__ == '__main__':
 
     from mayavi import mlab
     import colloids_to_janus
+    mlab.figure(bgcolor=(1, 1, 1))
 
     r -= r.mean(axis=0)
     colloids_to_janus.align_axis(r, 0)
-    mlab.points3d(*r.T, 1-s, scale_factor=2*args.sigma, scale_mode='none', resolution=20)
-
+    mlab.points3d(*r.T, 1-s, scale_factor=2*args.sigma, scale_mode='none', resolution=40)
+    print("I", colloids_to_janus.inertia_tensor(r))
     mlab.show()
 
     if args.out:
