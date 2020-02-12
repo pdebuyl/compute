@@ -1,0 +1,11 @@
+
+Source for deep learning pipeline https://arxiv.org/abs/1807.00083
+
+machine learning for PV performance https://phys.org/news/2019-11-machine-learning-assisted-molecular-high-performance-photovoltaic.html
+
+https://arxiv.org/abs/1903.10563
+
+
+https://jeunes.sfpnet.fr/2017/06/06/le-principe-de-landauer-pourquoi-manipuler-de-linformation-coute-de-lenergie/
+
+
