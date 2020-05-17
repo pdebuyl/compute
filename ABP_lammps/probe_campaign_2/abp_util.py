@@ -12,10 +12,24 @@ def write_input(**args):
 
     sigma_probe = args.sigma_probe
 
-    if args.add_force:
+    if 'add_force' in args:
         add_force_line = f'fix eforce probe addforce {args.add_force} 0 0'
     else:
         add_force_line = ''
+
+    if 'bath_dump_every' in args and args.bath_dump_every > 0:
+        bath_dump_line = f'dump bathdump bath h5md {args.bath_dump_every} {args.hfile} position image velocity file_from hdump create_group yes'
+    else:
+        bath_dump_line = ''
+
+    if 'gravity' in args:
+        sedimentation_line = f"""fix walls all wall/reflect ylo EDGE yhi EDGE
+fix grav probe addforce 0 {args.gravity} 0
+"""
+        boundary_line = 'boundary p f p'
+    else:
+        sedimentation_line = ''
+        boundary_line = 'boundary p p p'
 
     # damp < 1
     damp = 0.1
@@ -34,14 +48,22 @@ def write_input(**args):
 
     # N so that rho is surface area
     N = int(args.rho * (args.L**2 / np.pi - sigma_probe**2))
-    print("N = ", N)
+
+    infodict = {
+        'mass_probe': mass_probe,
+        'I': I,
+        'ascale': ascale,
+        'N': N,
+        'mass': mass,
+        'D_probe': D_probe
+    }
 
     L = args.L/2
 
     tmpl = \
     f"""
 dimension 2
-boundary p p p
+{boundary_line}
 units lj
 
 atom_style ellipsoid
@@ -82,7 +104,9 @@ pair_modify shift yes
 fix temp bath langevin 1 1 0.1 {seed_3} angmom {ascale}
 fix temp_probe probe langevin 1 1 0.1 {seed_4}
 fix 5 all enforce2d
+
 {add_force_line}
+{sedimentation_line}
 
 fix 1 bath nve/limit 0.1
 
@@ -107,10 +131,12 @@ thermo_style custom time step pe ke etotal temp c_T
 thermo 100000
 
 dump hdump probe h5md {args.dump_every} {args.hfile} position image velocity
-dump bathdump bath h5md {args.bath_dump_every} {args.bath_hfile} position image velocity
+{bath_dump_line}
 
 timestep 0.001
 run {args.sampling*1000}
-    """
+"""
 
-    return tmpl
+    return tmpl, infodict
+
+
