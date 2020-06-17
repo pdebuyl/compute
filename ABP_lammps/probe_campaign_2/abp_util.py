@@ -33,11 +33,12 @@ fix grav probe addforce 0 {args.gravity} 0
 
     # damp < 1
     damp = 0.1
+    damp_probe = 1
 
     # probe parameters
-    D_probe = D * radius / sigma_probe
-    gamma_probe = kT / D_probe
-    mass_probe = damp*gamma_probe
+    D_probe = args.D_probe
+    gamma_probe = mass_probe / damp_probe
+    mass_probe = args.mass_probe
 
     # ABP parameters for the inertial dynamics
     mass = kT * damp / D
@@ -102,7 +103,6 @@ pair_modify shift yes
 
 # Fixes for time integration
 fix temp bath langevin 1 1 0.1 {seed_3} angmom {ascale}
-fix temp_probe probe langevin 1 1 0.1 {seed_4}
 fix 5 all enforce2d
 
 {add_force_line}
@@ -120,7 +120,7 @@ fix probe_nve probe nve
 
 fix move bath propel/self quat {args.v0}
 timestep 0.001
-run 100000
+run 10000
 
 # Compute temperature and orientation
 compute T    bath temp/asphere
@@ -138,5 +138,4 @@ run {args.sampling*1000}
 """
 
     return tmpl, infodict
-
 
