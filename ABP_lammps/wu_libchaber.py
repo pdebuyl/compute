@@ -1,5 +1,6 @@
 import numpy as np
 import argparse
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('name')
@@ -9,12 +10,24 @@ parser.add_argument('--sampling', type=int, default=10000)
 parser.add_argument('--rho', type=float, default=0.25)
 parser.add_argument('--response', type=float)
 parser.add_argument('--movie', action='store_true')
+parser.add_argument('--json', action='store_true')
 args = parser.parse_args()
 
+params = {}
+for k in ['tau_r', 'v0', 'rho']:
+    params[k] = args.__dict__[k]
+if args.response is not None:
+    params['response'] = args.response
+params['filename'] = f'{args.name}.h5'
+
+if args.json:
+    with open(f'{args.name}.json', 'w') as f:
+        json.dump(params, f)
 
 # Base quantities
 
 kT = 1
+
 L = 40
 
 sedimentation_line = ''
@@ -33,7 +46,9 @@ bath_dump_line = f'dump bathdump bath h5md 50 wl.h5 position image velocity file
 bath_dump_line = ''
 
 if args.movie:
-    movie_line = f'dump mdump all movie 100 wl.avi type type'
+    movie_line = f'''dump mdump all movie 100 wl.avi type type
+dump_modify mdump adiam 2 10
+'''
 else:
     movie_line = ''
 
@@ -64,6 +79,8 @@ seed_1, seed_2, seed_3, seed_4 = np.random.randint(1, 2**25-1, size=4)
 rho = args.rho
 N = int(rho * (L**2 - np.pi*sigma_probe**2) / (np.pi*radius**2))
 
+rho_eff = rho / (np.pi*radius**2)
+
 tmpl = \
 f"""
 dimension 2
@@ -74,11 +91,16 @@ atom_style ellipsoid
 
 # Set up box and particles:
 variable L equal {L/2}
-region total block -$L $L -$L $L -$L $L
+lattice hex {rho}
+region total block -$L $L -$L $L -0.5 0.5 units box
+region probe_r sphere 0 0 0 {1.15*(sigma_probe+radius)} side out units box
+region free_space intersect 2 total probe_r
 create_box 2 total
-variable N equal {N}
-create_atoms 1 random $N {seed_1} total
+create_atoms 1 region free_space
 create_atoms 2 single 0 0 0
+
+neighbor 0.6 bin
+neigh_modify every 1 delay 1 check yes
 
 group bath type 1
 group probe type 2
@@ -108,6 +130,7 @@ pair_modify shift yes
 fix temp bath langevin 1 1 {damp} {seed_3} angmom {ascale}
 fix temp_probe probe langevin 1 1 {damp_probe} {seed_4}
 fix 5 all enforce2d
+fix probe_nve probe nve
 
 {add_force_line}
 {sedimentation_line}
@@ -115,14 +138,19 @@ fix 5 all enforce2d
 fix 1 bath nve/limit 0.1
 
 timestep 0.0001
-run 10000
-fix move bath propel/self quat {v0}
-run 10000
+run 100000
 
+fix move bath propel/self quat {v0}
+
+run 10000
+unfix 1
+
+fix 1 bath nve/limit 0.1
+timestep 0.0001
+run 20000
 unfix 1
 
 fix step bath nve/asphere
-fix probe_nve probe nve
 
 timestep 0.0001
 run 100000
@@ -145,5 +173,7 @@ run {args.sampling*1000}
 {response_line}
 """
 
-print(tmpl)
+with open(f'{args.name}.in', 'w') as f:
+    print(tmpl, file=f)
+
 
