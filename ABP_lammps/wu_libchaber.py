@@ -2,87 +2,75 @@ import numpy as np
 import argparse
 import json
 
-parser = argparse.ArgumentParser()
-parser.add_argument('name')
-parser.add_argument('--tau-r', type=float, default=0.1)
-parser.add_argument('--v0', type=float, default=20)
-parser.add_argument('--sampling', type=int, default=10000)
-parser.add_argument('--rho', type=float, default=0.25)
-parser.add_argument('--response', type=float)
-parser.add_argument('--movie', action='store_true')
-parser.add_argument('--json', action='store_true')
-args = parser.parse_args()
 
-params = {}
-for k in ['tau_r', 'v0', 'rho']:
-    params[k] = args.__dict__[k]
-if args.response is not None:
-    params['response'] = args.response
-params['filename'] = f'{args.name}.h5'
+def write_in_file(args):
 
-if args.json:
-    with open(f'{args.name}.json', 'w') as f:
-        json.dump(params, f)
+    name = f'{args.name}_{args.type}'
+    infile = f'{name}.in'
 
-# Base quantities
+    # Base quantities
 
-kT = 1
+    kT = 1
 
-L = 40
+    L = 40
 
-sedimentation_line = ''
-boundary_line = 'boundary p p p'
-add_force_line = ''
+    sedimentation_line = ''
+    boundary_line = 'boundary p p p'
 
-if args.response:
-    response_line = f'''fix push probe addforce {args.response} 0 0 
+    if args.force:
+        force_line = f'fix eforce probe addforce {args.force} 0 0'
+    else:
+        force_line = ''
+
+    if args.response:
+        response_line = f'''fix push probe addforce {args.response} 0 0 
 
 run {args.sampling*3000}
 '''
-else:
-    response_line = ''
+    else:
+        response_line = ''
 
-bath_dump_line = f'dump bathdump bath h5md 50 wl.h5 position image velocity file_from hdump create_group yes'
-bath_dump_line = ''
+    bath_dump_line = f'dump bathdump bath h5md 50 wl.h5 position image velocity file_from hdump create_group yes'
+    bath_dump_line = ''
 
-if args.movie:
-    movie_line = f'''dump mdump all movie 100 wl.avi type type
-dump_modify mdump adiam 2 10
-'''
-else:
-    movie_line = ''
+    if args.movie:
+        movie_line = f'''dump mdump all movie 100 wl.avi type type
+    dump_modify mdump adiam 2 10
+    '''
+    else:
+        movie_line = ''
 
-# abp parameters
+    # abp parameters
 
-radius = 1/2
-mass = 1
-gamma = 1
-damp = mass / gamma
-D = kT / gamma
-tau_r = args.tau_r
-v0 = args.v0
+    radius = 1/2
+    mass = 1
+    gamma = 1
+    damp = mass / gamma
+    D = kT / gamma
+    tau_r = args.tau_r
+    v0 = args.v0
 
-# probe parameters
-sigma_probe = 5
-mass_probe = 100
-gamma_probe = 10
-D_probe = kT / gamma_probe
-damp_probe = mass_probe / gamma_probe
+    # probe parameters
+    sigma_probe = 5
+    mass_probe = 100
+    gamma_probe = 10
+    D_probe = kT / gamma_probe
+    damp_probe = mass_probe / gamma_probe
 
-# ABP parameters for the inertial dynamics
-I = 2/5 * mass * radius**2
-ascale = 2*kT*damp*tau_r / I
+    # ABP parameters for the inertial dynamics
+    I = 2/5 * mass * radius**2
+    ascale = 2*kT*damp*tau_r / I
 
-seed_1, seed_2, seed_3, seed_4 = np.random.randint(1, 2**25-1, size=4)
+    seed_1, seed_2, seed_3, seed_4 = np.random.randint(1, 2**25-1, size=4)
 
-# N so that rho is surface area
-rho = args.rho
-N = int(rho * (L**2 - np.pi*sigma_probe**2) / (np.pi*radius**2))
+    # N so that rho is surface area
+    rho = args.rho
+    N = int(rho * (L**2 - np.pi*sigma_probe**2) / (np.pi*radius**2))
 
-rho_eff = rho / (np.pi*radius**2)
+    rho_eff = rho / (np.pi*radius**2)
 
-tmpl = \
-f"""
+    tmpl = \
+    f"""
 dimension 2
 {boundary_line}
 units lj
@@ -132,7 +120,7 @@ fix temp_probe probe langevin 1 1 {damp_probe} {seed_4}
 fix 5 all enforce2d
 fix probe_nve probe nve
 
-{add_force_line}
+{force_line}
 {sedimentation_line}
 
 fix 1 bath nve/limit 0.1
@@ -163,7 +151,7 @@ compute quat bath property/atom quatw quati quatj quatk
 thermo_style custom time step pe ke etotal temp c_T
 thermo 100000
 
-dump hdump probe h5md 100 {args.name}.h5 position image velocity
+dump hdump probe h5md 100 {name}.h5 position image velocity
 {bath_dump_line}
 {movie_line}
 
@@ -173,7 +161,66 @@ run {args.sampling*1000}
 {response_line}
 """
 
-with open(f'{args.name}.in', 'w') as f:
-    print(tmpl, file=f)
+    with open(infile, 'w') as f:
+        print(tmpl, file=f)
+
+    return infile
+
+def create_json_file(args):
+
+    params = {}
+    for k in ['tau_r', 'v0', 'rho']:
+        params[k] = args.__dict__[k]
+
+    params['runs'] = {}
+
+    with open(f'{args.name}.json', 'w') as f:
+        json.dump(params, f)
+
+def add_to_json_file(args):
+
+    with open(f'{args.name}.json', 'r') as f:
+        params = json.load(f)
+
+    args.tau_r = params['tau_r']
+    args.v0 = params['v0']
+    args.rho = params['rho']
+
+    run_data = {}
+    run_data['filename'] = write_in_file(args)
+    if args.response is not None:
+        run_data['response'] = args.response
+    if args.force is not None:
+        run_data['force'] = args.force
+
+    params['runs'][args.type] = run_data
+
+    with open(f'{args.name}.json', 'w') as f:
+        json.dump(params, f)
 
 
+main_parser = argparse.ArgumentParser()
+main_parser.set_defaults(func=None)
+
+main_parser.add_argument('name')
+main_parser.add_argument('--movie', action='store_true')
+
+sub_parsers = main_parser.add_subparsers()
+
+parser_create = sub_parsers.add_parser('create')
+parser_create.set_defaults(func=create_json_file)
+
+parser_create.add_argument('--tau-r', type=float, default=0.1)
+parser_create.add_argument('--v0', type=float, default=20)
+parser_create.add_argument('--rho', type=float, default=0.25)
+
+parser_add = sub_parsers.add_parser('add')
+parser_add.set_defaults(func=add_to_json_file)
+parser_add.add_argument('--type', choices=['free', 'force', 'response'], required=True)
+parser_add.add_argument('--response', type=float)
+parser_add.add_argument('--force', type=float)
+parser_add.add_argument('--sampling', type=int, default=1000)
+
+args = main_parser.parse_args()
+
+args.func(args)
