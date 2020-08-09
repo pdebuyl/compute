@@ -15,6 +15,7 @@ parser.add_argument('--verbose', action='store_true')
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--std', action='store_true')
 parser.add_argument('--analysis', choices=['diffusion', 'mobility', 'ratio', 'kinetic'], required=True)
+parser.add_argument('--out')
 
 args = parser.parse_args()
 
@@ -193,7 +194,7 @@ def processor_mobility(fname):
         l, = plt.plot(t, x, label=fname)
         plt.plot(t, np.poly1d((slope, intercept))(t), color=l.get_color())
 
-    return slope
+    return slope/force_value
 
 
 def processor_ratio(fname):
@@ -257,7 +258,7 @@ for l in listing:
         y_s_data.append(s)
 
     y_m_data = np.array(y_m_data)
-    y_s_data = np.array(y_s_data)
+    y_s_data = np.array(y_s_data) / len(y_s_data)
     line, = plt.plot(x_data, y_m_data, label=label, marker='o')
     if args.std:
         plt.plot(x_data, y_m_data-y_s_data, color=line.get_color(), ls='--')
@@ -268,4 +269,8 @@ plt.ylabel(ylabels[args.analysis])
 plt.title(f'{args.analysis}')
 
 plt.legend()
-plt.show()
+
+if args.out:
+    plt.savefig(args.out)
+else:
+    plt.show()
