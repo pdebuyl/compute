@@ -25,7 +25,7 @@ def write_in_file(args):
     if args.response:
         response_line = f'''fix push probe addforce {args.response} 0 0 
 
-run {args.sampling*3000}
+run {args.sampling*1000}
 '''
     else:
         response_line = ''
@@ -52,7 +52,7 @@ run {args.sampling*3000}
 
     # probe parameters
     sigma_probe = 5
-    mass_probe = 100
+    mass_probe = args.mass_probe
     gamma_probe = 10
     D_probe = kT / gamma_probe
     damp_probe = mass_probe / gamma_probe
@@ -169,7 +169,7 @@ run {args.sampling*1000}
 def create_json_file(args):
 
     params = {}
-    for k in ['tau_r', 'v0', 'rho']:
+    for k in ['tau_r', 'v0', 'rho', 'mass_probe']:
         params[k] = args.__dict__[k]
 
     params['runs'] = {}
@@ -185,6 +185,7 @@ def add_to_json_file(args):
     args.tau_r = params['tau_r']
     args.v0 = params['v0']
     args.rho = params['rho']
+    args.mass_probe = params['mass_probe']
 
     run_data = {}
     run_data['filename'] = write_in_file(args)
@@ -213,6 +214,7 @@ parser_create.set_defaults(func=create_json_file)
 parser_create.add_argument('--tau-r', type=float, default=0.1)
 parser_create.add_argument('--v0', type=float, default=20)
 parser_create.add_argument('--rho', type=float, default=0.25)
+parser_create.add_argument('--mass-probe', type=float, default=100)
 
 parser_add = sub_parsers.add_parser('add')
 parser_add.set_defaults(func=add_to_json_file)
